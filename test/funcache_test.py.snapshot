@@ -1,0 +1,164 @@
+
+###############################################################################
+# Function implementation fingerprint
+###############################################################################
+
+Using the following definitions:
+def three(h):
+    return json.dumps(h)
+
+def two(c):
+    # Call a function in a different module
+    return foo.three({'a': c + 1})
+
+def make_thing(a):
+    return a + 1
+
+def nested_function_def():
+    def blah(x):
+        return x + 1
+
+def nested_class_def():
+    class Foo:
+        def __init__(self, a):
+            self.thing = make_thing(a)
+    return Foo
+
+def fn_to_assign(x):
+    return x + 1
+
+def fn_to_pass(x):
+    return x * 1
+
+def one(a, b):
+    # Call a function that contains a function definition
+    nested_function_def()
+    # Call a function that contains a class definition
+    nested_class_def()
+    # Assign a function to a variable, but don't call it
+    fn = fn_to_assign
+    # Pass a function as an argument, but don't call it
+    think_about_function(fn_to_pass)
+    return two(a + b)
+
+Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
+
+Adding a comment to make_thing()
+Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
+
+Changing implementation of make_thing()
+Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
+
+Changing implementation of fn_to_assign()
+Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
+
+Changing implementation of fn_to_pass()
+Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
+
+Fingerprint of one() with root='/': 6fcb9d6dd4bb9b5dfa85f5127d0d5289
+
+###############################################################################
+# @funcache.cache()
+###############################################################################
+
+Using the following definition:
+@funcache.cache()
+def cached_func(x, **kwargs):
+    print("EXECUTED")
+    return one(x, 1)
+
+Calling cached_func(100) for the first time...
+EXECUTED
+{"a": 102}
+
+Calling cached_func(100) again...
+{"a": 102}
+
+Changing the implementation of make_thing(100)...
+
+Calling cached_func(100)...
+EXECUTED
+{"a": 102}
+
+Calling cached_func(100)...
+{"a": 102}
+
+Calling cached_func(999)...
+EXECUTED
+{"a": 1001}
+
+Calling cached_func(999)...
+{"a": 1001}
+
+Calling cached_func(999, foo=True)...
+EXECUTED
+{"a": 1001}
+
+Calling cached_func(999, foo=True)...
+{"a": 1001}
+
+###############################################################################
+# no_cache
+###############################################################################
+
+Calling cached_func(999, foo=True, no_cache=True)...
+EXECUTED
+{"a": 1001}
+
+Calling cached_func(999, foo=True, no_cache=True)...
+EXECUTED
+{"a": 1001}
+
+###############################################################################
+# passing functions into cached functions
+###############################################################################
+
+Calling cached_func(100, fn=make_thing)...
+EXECUTED
+{"a": 102}
+
+Calling cached_func(100, fn=make_thing)...
+{"a": 102}
+
+Changing implementation of make_thing()
+
+Calling cached_func(100, fn=make_thing)...
+EXECUTED
+{"a": 102}
+
+Making sure cache_id is deterministic across processes when args include functions
+get_cache_id(make_thing, [make_thing], dict(fn=make_thing))
+494defc79b22ff3da12928f37a9b1c15
+
+###############################################################################
+# strict
+###############################################################################
+
+Using the following definition:
+@funcache.cache(strict=True, root='/')
+def strictly_cached(a):
+    return json.dumps(a)
+
+Calling strictly_cached(1)
+Exception: Unable to find source for function _json.encode_basestring_ascii
+
+Using the following definition:
+@funcache.cache(strict=True)
+def strictly_cached(a):
+    return json.dumps(a)
+
+Calling strictly_cached(1)
+1
+Calling strictly_cached([1])
+Exception: Unable to hash <class 'list'> [1]: unhashable type: 'list'
+
+Use @funcache.cache(strict=True) if you want to be sure all your arguments are being included in the cache key.
+
+get_cache_id(make_thing, [[1]], {})
+fe01a6ea9f12262938d74edb013e739a
+
+get_cache_id(make_thing, [[0]], {})
+fe01a6ea9f12262938d74edb013e739a
+
+get_cache_id(make_thing, [[1]], {}, strict=True)
+Exception: Unable to hash <class 'list'> [1]: unhashable type: 'list'

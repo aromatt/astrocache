@@ -1,4 +1,4 @@
-* Honor more elusive nestedness scenarios:
-  * nested function is not called, but is instead passed in or assigned
+* Support more elusive nestedness scenarios:
+  * When an inner function is not called, but is passed or assigned
 * Add an in-memory LRU cache
 * Support `@funcache.cache` (no parens)

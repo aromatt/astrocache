@@ -30,8 +30,8 @@ Your cache entries are no longer valid.
 
 Luckily, `funcache` knows the implementation has changed, so it will refresh the
 cache the next time you call `my_function`. This treatment extends to any function
-called by `my_function` as well; in this case, `expensive_operation` (and so on, 
-recursively).
+called by `my_function` as well; in this case, `expensive_operation` (and any 
+functions called by `expensive_operation`, etc).
 
 ## How is this useful?
 As an example, imagine you're rapidly iterating on a script or notebook that processes data 

@@ -12,63 +12,68 @@ to the decorated function. The cache is persisted to disk.
 This means that the cache will refresh any time you change the implementation of the function.
 
 Here's an example.
-
-        @funcache.cache()
-        def my_function(foo, bar):
-            return expensive_operation(foo) + bar
-
+```python
+@funcache.cache()
+def my_function(foo, bar):
+    return expensive_operation(foo) + bar
+```
 This creates an on-disk cache for `my_function`, so that repeated calls with the 
-same arguments don't cause the function to do its expensive work over and over. 
-But what if you change the implementation of `my_function`?
+same arguments don't cause the function to do its expensive work over and over.
 
-        @funcache.cache()
-        def my_function(foo, bar):
-            return expensive_operation(foo) - bar
-            
-Your cached answers are no longer valid. 
+But what if you change the implementation of `my_function`?
+```python
+@funcache.cache()
+def my_function(foo, bar):
+    return expensive_operation(foo) - bar
+```
+Your cache entries are no longer valid. 
 
 Luckily, `funcache` knows the implementation has changed, so it will refresh the
 cache the next time you call `my_function`. This treatment extends to any function
-called by `my_function` as well; in this case, `expensive_operation`.
+called by `my_function` as well; in this case, `expensive_operation` (and so on, 
+recursively).
 
 ## How is this useful?
 As an example, imagine you're rapidly iterating on a script or notebook that processes data 
 in several expensive steps. You can benefit from durable memoization here, but you don't want
 to have to remember to clear the various cache entries as you iterate. This would be especially
-cumbersome if you had any shared utility functions that you're also iterating on.
+cumbersome if you were iterating on any shared utility functions as well.
 
 ## Limitations
 `funcache` includes the following in its cache keys:
 
-  * Args and kwargs. This includes the implementations of functions passed as arguments.
+  * All hashable args and kwargs
   * The cached function's own implementation
-  * Implementations of functions called directly by the cached function
-  * Implementations of functions defined within the cached function
-  * Implementations of classes defined within the cached function
+  * Implementations of any functions that are:
+      * Passed as args or kwargs
+      * Called directly by the cached function
+      * Defined within the cached function
+  * Class definitions within the cached function
 
-If you only reference a function but do not call it directly or receive it as a parameter
-to your cached function, then its definition will not be included in the cache key.
-
-        @funcache.cache()
-        def my_function():
-            foo = some_function
+If you reference a function but do not call it directly or receive it as a parameter, 
+then its definition will not be included in the cache key. Examples:
+```python
+@funcache.cache()
+def my_function():
+    foo = some_function
         
-        @funcache.cache()
-        def my_function():
-            bar(some_function)
-            
+@funcache.cache()
+def my_function():
+    bar(some_function)
+```
 In these examples, `some_function`'s definition is not included in the cache key for `my_function`,
 because `my_function` doesn't call it and it's not received as a parameter. To get around this,
 you can just accept it as a parameter.
+```python
+@funcache.cache()
+def my_function(foo, some_function):
+    foo = some_function
+    # or
+    bar(some_function)
+```
 
-        @funcache.cache()
-        def my_function(foo, some_function):
-            foo = some_function
-            # or
-            bar(some_function)
-            
-
-Here, `some_functions`'s implementation *will* be included in the cache key.
+Here, `some_functions`'s implementation *will* be included in the cache key because it's received
+as a parameter.
 
 ## Related projects
   

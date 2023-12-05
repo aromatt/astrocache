@@ -129,16 +129,15 @@ def _value_hash(obj, strict: bool = False):
             raise ValueError(f"Unable to hash {type(obj)} {obj}: {e}")
 
 
-def make_hash(*parts):
+def _make_hash(*parts):
     return hashlib.md5(str(parts).encode()).hexdigest()
 
 
-def func_fingerprint(func: Callable, root: Optional[str] = None, strict: bool = False):
-    """Returns a hash that changes when the implementation of func changes."""
+def _func_fingerprint(func: Callable, root: Optional[str] = None, strict: bool = False):
     return Function.from_func(func, strict=strict).fingerprint(root=root, strict=strict)
 
 
-def arg_fingerprint(args: list, kwargs: dict, strict: bool = False):
+def _arg_fingerprint(args: list, kwargs: dict, strict: bool = False):
     return [
         *[_value_hash(x, strict=strict) for x in args],
         *[(k, _value_hash(v)) for k,v in kwargs.items()],
@@ -146,7 +145,7 @@ def arg_fingerprint(args: list, kwargs: dict, strict: bool = False):
 
 
 @contextmanager
-def atomic_writer(path, mode='w'):
+def _atomic_writer(path, mode='w'):
     """Yields temp file and moves it to specified path on context exit. Creates
     destination directory if it doesn't already exist."""
     if 'a' in mode:
@@ -165,14 +164,8 @@ def atomic_writer(path, mode='w'):
         raise
 
 
-def atomic_write(path, content, mode='w'):
-    """Write content to temp file and move to specified path"""
-    with atomic_writer(path, mode=mode) as f:
-        f.write(content)
-
-
 def _write_cache(path, data):
-    with atomic_writer(path, 'wb') as f:
+    with _atomic_writer(path, 'wb') as f:
         pickle.dump(data, f)
     return data
 
@@ -188,57 +181,56 @@ def clear_cache():
 
 
 def get_cache_id(func: Callable, args: list, kwargs: dict,
-        root: Optional[str] = None, strict: bool = False):
-    return make_hash(func_fingerprint(func, root=root, strict=strict),
-                     arg_fingerprint(args, kwargs, strict=strict))
+                 root: Optional[str] = None, strict: bool = False):
+    return _make_hash(_func_fingerprint(func, root=root, strict=strict),
+                      _arg_fingerprint(args, kwargs, strict=strict))
 
 
 def cache(root: Optional[str] = None, strict: bool = False):
     """
-    cache() is a decorator which adds a durable cache to the wrapped function.
-    The cache key is a combination of the function's args, kwargs, and implementation.
-    Function implementation is determined recursively, but inspection is limited to
-    source files within `root`, which is configurable via the kwarg, and defaults to
-    the directory containing the function's module.
+    Decorator that adds a durable cache to the wrapped function.
 
-    Use like so:
-        @funcache.cache()
-        def my_function(foo, bar):
-            return foo + bar
+    The cache key is generated based on the function's arguments, kwargs, and its
+    implementation. The implementation is determined recursively, but inspection
+    is limited to source files within `root`. The cache is stored in the
+    directory specified by the FUNCACHE_DIR environment variable or in a
+    (deterministic) temporary directory if FUNCACHE_DIR is not set.
 
-    Options to @funcache.cache():
-      - root: Attempt to inspect source code within this directory. Default is
-              parent of function's module.
-      - strict: If any arguments cannot be deterministically hashed, or any functions
-                cannot be found, raise an exception instead of skipping over them.
+    Parameters:
+    root (Optional[str]): The root directory for source code inspection. This
+                          limits the scope of function implementation inspection
+                          to the specified directory. Defaults to the directory
+                          containing the function's module.
+    strict (bool): If True, raises an exception for any unhashable arguments or
+                   if any referenced functions cannot be found. If False, skips
+                   over unhashable parts and unfound functions. Defaults to False.
 
-    When calling a cached function, you may set `no_cache=True` to prevent use of
-    the cache for that invocation.
+    Returns:
+    Callable: A wrapped function with caching applied.
 
-    Changing a function's implementation invalidates the cache... to an extent.
+    Usage:
+    To use this decorator, simply apply it to a function definition:
 
-    These things count as part of a function's implementation:
-      - The function's own expressions
-      - Function definitions within the cached function
-      - Class definitions within the cached function
-      - Definitions of all functions called by the cached function
-      - Definitions of functions received as parameters by the cached function
+    @funcache.cache()
+    def my_function(arg1, arg2):
+        # Function implementation
 
-    And these don't:
-      - Definitions of functions assigned to variables, e.g. `foo = some_function`
-      - Definitions of functions used as arguments, e.g. `bar(some_function)`
+    You can also specify the `root` and `strict` parameters:
 
-    However, if you want a referenced function's implementation to be included in
-    your cache key, you can just accept it as a parameter.
+    @funcache.cache(root='/path/to/inspect', strict=True)
+    def another_function(arg1, arg2):
+        # Function implementation
 
-    Example:
-        @funcache.cache()
-        def my_func(foo, other_func):
-            something(other_func)
-            return foo + 1
-
-    Here, even though my_func never calls other_func, other_func's implementation
-    will still be included in the cache key for my_func.
+    Note:
+    - The cache is invalidated if the implementation of the function or any
+      referenced function within the specified `root` changes. Note: referenced
+      functions must be called directly, passed in as arguments, or defined
+      inside the cached function in order for their implementations to be
+      inspected. See README.md and test cases for more detail.
+    - Changes in comments, formatting, or in functions outside the `root`
+      directory do not trigger cache invalidation.
+    - Setting `FUNCACHE_REFRESH` environment variable to a truthy value bypasses
+      the cache and forces function execution.
     """
     def decorator(func):
         @functools.wraps(func)

@@ -46,6 +46,9 @@ Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
 Adding a comment to make_thing()
 Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
 
+Changing some formatting in make_thing()
+Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
+
 Changing implementation of make_thing()
 Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
 

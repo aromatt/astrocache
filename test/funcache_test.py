@@ -17,7 +17,7 @@ def catch_exception():
         print(f"Exception: {e}")
 
 def func_fingerprint_hash(func, **kwargs):
-    return funcache.make_hash(funcache.func_fingerprint(one, **kwargs))
+    return funcache._make_hash(funcache._func_fingerprint(one, **kwargs))
 
 def print_fingerprint(func):
     print(f"Fingerprint hash for {func.__name__}(): {func_fingerprint_hash(func)}")
@@ -82,6 +82,15 @@ print("\nAdding a comment to make_thing()")
 def make_thing(a):
     # comment
     return a + 1
+
+print_fingerprint(one)
+
+print("\nChanging some formatting in make_thing()")
+def make_thing(a):
+    # comment
+
+    return (a + \
+            1)
 
 print_fingerprint(one)
 

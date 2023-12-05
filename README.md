@@ -1,24 +1,20 @@
 # funcache [![Build Status](https://app.travis-ci.com/aromatt/funcache.svg?branch=main)](https://app.travis-ci.com/aromatt/funcache)
-Durable, implementation-aware memoization for Python functions.
+Durable memoization that automatically refreshes as you update your source code.
 
 ## What is this?
-This library provides the decorator `@funcache.cache` which adds
-[memoization](https://en.wikipedia.org/wiki/Memoization) to the decorated function.
-The cache is persisted to disk.
+This library provides [memoization](https://en.wikipedia.org/wiki/Memoization) for
+Python functions. This cache is persisted to disk, and is sensitive not only to the 
+function's inputs, but also to its *implementation*.
 
-## So, what?
-*The cache key includes the function's implementation*.
+Here's an example:
 
-This means that the cache will refresh any time you change the implementation of the function.
-
-Here's an example.
 ```python
 @funcache.cache()
 def my_function(foo, bar):
     return expensive_operation(foo) + bar
 ```
-This creates an on-disk cache for `my_function`, so that repeated calls with the
-same arguments avoid doing the same expensive work over and over.
+This creates an on-disk cache for `my_function`, which avoids doing the same
+expensive work more than once for a given input.
 
 But what if you change the implementation of `my_function`?
 ```python
@@ -34,39 +30,46 @@ next time you call `my_function`.
 This treatment extends to any function called by `my_function` as well. In this case,
 `expensive_operation` (and any functions called by `expensive_operation`, etc).
 
-## Why is this useful?
+## How is this useful?
 As an example, imagine you're rapidly iterating on a program or notebook that
-processes data in several expensive steps, or uses a rate-limited API. You can
-benefit from durable memoization here, but you don't want to have to remember to
-clear the various cache entries as you iterate. This would be especially cumbersome
-if you were iterating on shared utility functions as well.
+processes data in several expensive steps, or hits a usage-limited API.
+
+Memoization could make you more productive, but you'd have to remember to clear the
+various cache entries as you iterated on your code. This would be especially cumbersome
+if you memoized shared library functions.
+
+This library automates this for you, allowing you to rapidly iterate, aided by memoization,
+without having to worry about clearing the cache.
 
 ## Limitations around referenced functions
 In general, there is one exception to the behavior described above.
 
-Other functions referenced within your decorated function are only included in the cache
-key if they are called directly, passed in, or defined in your cached function.
+Other functions referenced within your decorated function are only inspected
+if they are called, passed in, or defined in your cached function.
 
 Here are some examples to illustrate this:
+
+✅ Calling a function
+```python
+@funcache.cache()
+def cached_function(referenced_function):
+    # referenced_function will be inspected
+    referenced_function(1)
+```
 
 ✅ Passing a function as a parameter
 ```python
 @funcache.cache()
 def cached_function(referenced_function):
+    # referenced_function will be inspected
     foo(referenced_function)
-```
-
-✅ Calling a function directly
-```python
-@funcache.cache()
-def cached_function(referenced_function):
-    referenced_function(1)
 ```
 
 ✅ Defining a function within the cached function
 ```python
 @funcache.cache()
 def cached_function():
+    # referenced_function will be inspected
     def referenced_function():
         return 1
     foo(referenced_function)
@@ -76,6 +79,7 @@ def cached_function():
 ```python
 @funcache.cache()
 def cached_function():
+    # referenced_function will NOT be inspected
     foo = referenced_function
 ```
 
@@ -83,6 +87,7 @@ def cached_function():
 ```python
 @funcache.cache()
 def cached_function():
+    # referenced_function will NOT be inspected
     foo(referenced_function)
 ```
 

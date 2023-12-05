@@ -29,7 +29,7 @@ def my_function(foo, bar):
 Your cache entries are no longer valid.
 
 Luckily, `funcache` knows the implementation has changed. The cache will be updated
-the next time you call `my_function`.
+next time you call `my_function`.
 
 This treatment extends to any function called by `my_function` as well. In this case,
 `expensive_operation` (and any functions called by `expensive_operation`, etc).
@@ -39,30 +39,31 @@ As an example, imagine you're rapidly iterating on a program or notebook that
 processes data in several expensive steps, or uses a rate-limited API. You can
 benefit from durable memoization here, but you don't want to have to remember to
 clear the various cache entries as you iterate. This would be especially cumbersome
-if you were iterating on any shared utility functions as well.
+if you were iterating on shared utility functions as well.
 
-## Limitations
+## Limitations around referenced functions
 In general, there is one exception to the behavior described above.
 
 Other functions referenced within your decorated function are only included in the cache
 key if they are called directly, passed in, or defined in your cached function.
 
-### Examples
-#### ✅ Passing a function as a parameter
+Here are some examples to illustrate this:
+
+✅ Passing a function as a parameter
 ```python
 @funcache.cache()
 def cached_function(referenced_function):
     foo(referenced_function)
 ```
 
-#### ✅ Calling a function directly
+✅ Calling a function directly
 ```python
 @funcache.cache()
 def cached_function(referenced_function):
     referenced_function(1)
 ```
 
-#### ✅ Defining a function within the cached function
+✅ Defining a function within the cached function
 ```python
 @funcache.cache()
 def cached_function():
@@ -71,14 +72,14 @@ def cached_function():
     foo(referenced_function)
 ```
 
-#### ❌ Assigning a function from outer scope to a variable (only)
+❌ Assigning a function from outer scope to a variable (only)
 ```python
 @funcache.cache()
 def cached_function():
     foo = referenced_function
 ```
 
-#### ❌ Passing a function from outer scope to a called function (only)
+❌ Passing a function from outer scope to a called function (only)
 ```python
 @funcache.cache()
 def cached_function():

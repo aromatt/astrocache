@@ -108,7 +108,9 @@ print_fingerprint(one)
 
 # By expanding the scope of inspection to '/', we include the implementation of
 # other libraries, e.g. the json module (used by foo.three())
-print(f"\nFingerprint of one() with root='/': {func_fingerprint_hash(one, root='/')}")
+# TODO Write a good test case for this. Currently this is pretty
+#      non-deterministic because it depends on system python libraries.
+# print(f"\nFingerprint of one() with root='/': {func_fingerprint_hash(one, root='/')}")
 
 print("""
 ###############################################################################

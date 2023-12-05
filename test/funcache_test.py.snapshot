@@ -55,8 +55,6 @@ Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
 Changing implementation of fn_to_pass()
 Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
 
-Fingerprint of one() with root='/': 6fcb9d6dd4bb9b5dfa85f5127d0d5289
-
 ###############################################################################
 # @funcache.cache()
 ###############################################################################

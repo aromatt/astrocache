@@ -13,8 +13,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, NamedTuple, Optional
 
-CACHE_DIR = os.environ.get('FUNCACHE_DIR', Path(tempfile.gettempdir()) / 'funcache')
-REFRESH = os.environ.get('FUNCACHE_REFRESH')
+CACHE_DIR = os.environ.get('ASTROCACHE_DIR', Path(tempfile.gettempdir()) / 'astrocache')
+REFRESH = os.environ.get('ASTROCACHE_REFRESH')
 
 
 class Function(NamedTuple):
@@ -199,8 +199,8 @@ def cache(root: Optional[str] = None, strict: bool = False):
     The cache key is generated based on the function's arguments, kwargs, and its
     implementation. The implementation is determined recursively, but inspection
     is limited to source files within `root`. The cache is stored in the
-    directory specified by the FUNCACHE_DIR environment variable or in a
-    (deterministic) temporary directory if FUNCACHE_DIR is not set.
+    directory specified by the ASTROCACHE_DIR environment variable or in a
+    (deterministic) temporary directory if ASTROCACHE_DIR is not set.
 
     Parameters:
     root (Optional[str]): The root directory for source code inspection. This
@@ -217,13 +217,13 @@ def cache(root: Optional[str] = None, strict: bool = False):
     Usage:
     To use this decorator, simply apply it to a function definition:
 
-    @funcache.cache()
+    @astrocache.cache()
     def my_function(arg1, arg2):
         # Function implementation
 
     You can also specify the `root` and `strict` parameters:
 
-    @funcache.cache(root='/path/to/inspect', strict=True)
+    @astrocache.cache(root='/path/to/inspect', strict=True)
     def another_function(arg1, arg2):
         # Function implementation
 
@@ -235,7 +235,7 @@ def cache(root: Optional[str] = None, strict: bool = False):
       inspected. See README.md and test cases for more detail.
     - Changes in comments, formatting, or in functions outside the `root`
       directory do not trigger cache invalidation.
-    - Setting `FUNCACHE_REFRESH` environment variable to a truthy value bypasses
+    - Setting `ASTROCACHE_REFRESH` environment variable to a truthy value bypasses
       the cache and forces function execution.
     """
     def decorator(func):

@@ -3,8 +3,8 @@ requires = ["flit_core>=3.4"]
 build-backend = "flit_core.buildapi"
 
 [project]
-name = "funcache"
-version = "0.0.3"
+name = "astrocache"
+version = "0.0.1"
 authors = [
   { name="Andrew Matteson", email="andrewkmatteson@gmail.com" },
 ]
@@ -18,5 +18,5 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aromatt/funcache"
-Issues = "https://github.com/aromatt/funcache/issues"
+Homepage = "https://github.com/aromatt/astrocache"
+Issues = "https://github.com/aromatt/astrocache/issues"

@@ -1,11 +1,11 @@
-# funcache [![Build Status](https://app.travis-ci.com/aromatt/funcache.svg?branch=main)](https://app.travis-ci.com/aromatt/funcache)
+# astrocache [![Build Status](https://app.travis-ci.com/aromatt/astrocache.svg?branch=main)](https://app.travis-ci.com/aromatt/astrocache)
 Durable memoization that automatically refreshes as you update your source code.
 
 ## Installation
 Requires Python >= 3.9.
 
 ```
-python3 -m pip install funcache
+python3 -m pip install astrocache
 ```
 
 ## What is this?
@@ -16,9 +16,9 @@ function's inputs, but also to its *implementation* (recursively).
 Here's an example:
 
 ```python
-import funcache
+import astrocache
 
-@funcache.cache()
+@astrocache.cache()
 def foo(a, b):
     return slow_fn(a) + b
 ```
@@ -28,13 +28,13 @@ expensive work more than once for a given input.
 But what if you change the implementation of `foo`?
 
 ```python
-@funcache.cache()
+@astrocache.cache()
 def foo(a, b):
     return slow_fn(a) + b * 2
 ```
 Your cache entries are no longer valid because the behavior of `foo` has changed.
 
-Luckily, `funcache` is aware of this. It will update the cache next time you call
+Luckily, `astrocache` is aware of this. It will update the cache next time you call
 `foo`.
 
 This treatment extends to any function called by `foo` as well. In this case,
@@ -52,7 +52,7 @@ This library automates this for you, allowing you to rapidly iterate, aided by
 memoization, without having to worry about clearing the cache.
 
 ## Limitation: referenced functions
-While `funcache` handles most situations in application code, there is a gotcha
+While `astrocache` handles most situations in application code, there is a gotcha
 related to referencing functions as values.
 
 Functions referenced within your cached function are only inspected if your cached
@@ -65,7 +65,7 @@ Here are some examples to illustrate this:
 
 ✅ Calling a function
 ```python
-@funcache.cache()
+@astrocache.cache()
 def foo(referenced_function):
     # referenced_function will be inspected
     referenced_function(1)
@@ -73,7 +73,7 @@ def foo(referenced_function):
 
 ✅ Passing a function as a parameter
 ```python
-@funcache.cache()
+@astrocache.cache()
 def foo(referenced_function):
     # referenced_function will be inspected
     foo(referenced_function)
@@ -81,7 +81,7 @@ def foo(referenced_function):
 
 ✅ Defining a function within the cached function
 ```python
-@funcache.cache()
+@astrocache.cache()
 def foo():
     # referenced_function will be inspected
     def referenced_function():
@@ -91,7 +91,7 @@ def foo():
 
 ❌ Assigning a function from outer scope to a variable (only)
 ```python
-@funcache.cache()
+@astrocache.cache()
 def foo():
     # referenced_function will NOT be inspected
     foo = referenced_function
@@ -99,7 +99,7 @@ def foo():
 
 ❌ Passing a function from outer scope to a called function (only)
 ```python
-@funcache.cache()
+@astrocache.cache()
 def foo():
     # referenced_function will NOT be inspected
     foo(referenced_function)

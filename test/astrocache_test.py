@@ -6,7 +6,7 @@ import time
 import textwrap
 from contextlib import contextmanager
 
-import funcache
+import astrocache
 import foo
 
 @contextmanager
@@ -17,7 +17,7 @@ def catch_exception():
         print(f"Exception: {e}")
 
 def func_fingerprint_hash(func, **kwargs):
-    return funcache._make_hash(funcache._func_fingerprint(one, **kwargs))
+    return astrocache._make_hash(astrocache._func_fingerprint(one, **kwargs))
 
 def print_fingerprint(func):
     print(f"Fingerprint hash for {func.__name__}(): {func_fingerprint_hash(func)}")
@@ -123,13 +123,13 @@ print_fingerprint(one)
 
 print("""
 ###############################################################################
-# @funcache.cache()
+# @astrocache.cache()
 ###############################################################################
 """)
 
-funcache.clear_cache()
+astrocache.clear_cache()
 
-@funcache.cache()
+@astrocache.cache()
 def cached_func(x, **kwargs):
     print("EXECUTED")
     return one(x, 1)
@@ -198,7 +198,7 @@ print(cached_func(100, fn=make_thing))
 
 print("\nMaking sure cache_id is deterministic across processes when args include functions")
 print("_get_cache_id(make_thing, [make_thing], dict(fn=make_thing))")
-print(funcache._get_cache_id(make_thing, [make_thing], dict(fn=make_thing)))
+print(astrocache._get_cache_id(make_thing, [make_thing], dict(fn=make_thing)))
 
 print("""
 ###############################################################################
@@ -206,7 +206,7 @@ print("""
 ###############################################################################
 """)
 
-@funcache.cache(strict=True, root='/')
+@astrocache.cache(strict=True, root='/')
 def strictly_cached(a):
     return json.dumps(a)
 print("Using the following definition:")
@@ -215,7 +215,7 @@ with catch_exception():
     print("Calling strictly_cached(1)")
     print(strictly_cached(1))
 
-@funcache.cache(strict=True)
+@astrocache.cache(strict=True)
 def strictly_cached(a):
     return json.dumps(a)
 print("\nUsing the following definition:")
@@ -227,17 +227,17 @@ with catch_exception():
     print("Calling strictly_cached([1])")
     print(strictly_cached([1]))
 
-print("\nUse @funcache.cache(strict=True) if you want to be sure all your "
+print("\nUse @astrocache.cache(strict=True) if you want to be sure all your "
       + "arguments are being included in the cache key.")
 
 with catch_exception():
     print("\nget_cache_id(make_thing, [[1]], {})")
-    print(funcache._get_cache_id(make_thing, [[1]], {}))
+    print(astrocache._get_cache_id(make_thing, [[1]], {}))
 
 with catch_exception():
     print("\nget_cache_id(make_thing, [[0]], {})")
-    print(funcache._get_cache_id(make_thing, [[0]], {}))
+    print(astrocache._get_cache_id(make_thing, [[0]], {}))
 
 with catch_exception():
     print("\nget_cache_id(make_thing, [[1]], {}, strict=True)")
-    print(funcache._get_cache_id(make_thing, [[1]], {}, strict=True))
+    print(astrocache._get_cache_id(make_thing, [[1]], {}, strict=True))

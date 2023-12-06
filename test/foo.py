@@ -1,4 +1,4 @@
-# This is not a test case. It is used by funcache_test.py.
+# This is not a test case. It is used by astrocache_test.py.
 
 import json
 

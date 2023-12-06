@@ -10,7 +10,7 @@ python3 -m pip install astrocache
 
 ## What is this?
 This library provides [memoization](https://en.wikipedia.org/wiki/Memoization) for
-Python functions. This cache is persisted to disk, and is sensitive not only to the
+Python functions. This cache is persisted to disk and is sensitive not only to the
 function's inputs, but also to its *implementation* (recursively).
 
 Here's an example:
@@ -22,34 +22,24 @@ import astrocache
 def foo(a, b):
     return slow_fn(a) + b
 ```
-This creates an on-disk cache for `foo`, which avoids doing the same work more than
-once for a given input.
+This creates a disk-backed cache for `foo`, and prevents `foo` from performing the
+same work more than once for a given input. Each unique set of arguments gets its own
+cache entry.
 
-But what if you change the implementation of `foo`?
+But what if you change the behavior of `foo`?
 
 ```python
 @astrocache.cache()
 def foo(a, b):
     return slow_fn(a) + b * 2
 ```
-Your cache entries are no longer valid because the behavior of `foo` has changed.
+Your cache entries are no longer valid.
 
-Luckily, `astrocache` is aware of this. It will update the cache next time you call
-`foo`.
+Luckily, `astrocache` is aware of this. It will create new cache entries for the new
+version of `foo`.
 
 This treatment extends to any function called by `foo` as well. In this case,
 `slow_fn` (and any functions called by `slow_fn`, etc).
-
-## How is this useful?
-As an example, imagine you're rapidly iterating on a program or notebook that
-processes data in several expensive steps, or hits a usage-limited API.
-
-Memoization could make you more productive, but you'd have to remember to clear the
-various cache entries as you developed your code. This would be especially cumbersome
-if you memoized shared library functions.
-
-This library automates this for you, allowing you to take advantage of memoization
-without having to worry about clearing the cache.
 
 ## How does it work?
 Astrocache creates a fingerprint of your function's abstract syntax tree (AST)
@@ -59,6 +49,16 @@ library.
 When your function is called, this fingerprint is combined with the function's
 arguments to create a cache key. The return value of the function call is then
 written to the cache under this key.
+
+## How is this useful?
+As an example, imagine you're rapidly iterating on a program or notebook that
+processes data in several expensive steps, or hits a usage-limited API.
+
+Memoization could make you more productive, but you'd have to remember to clear the
+various cache entries as you updated your code.
+
+This library automates this for you, allowing you to take advantage of memoization
+without needing to worry about clearing the cache.
 
 ## Limitation: referenced functions
 There is a caveat related to referencing functions as values.

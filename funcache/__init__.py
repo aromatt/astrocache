@@ -77,6 +77,8 @@ class Function(NamedTuple):
             return Function.from_func(func, strict=strict)
         elif strict:
             raise ValueError(f"Unable to find function from {ast.dump(node)}")
+        else:
+            return None
 
     def fingerprint(self, root: Optional[str] = None, strict: bool = False):
         """Return the implementation fingerprint for this Function. Provide
@@ -124,9 +126,13 @@ def _value_hash(obj, strict: bool = False):
         except Exception as e:
             if strict:
                 raise ValueError(f"Unable to hash {type(obj)} {obj}: {e}")
+            else:
+                return None
     else:
         if strict:
             raise ValueError(f"Unable to hash {type(obj)} {obj}: {e}")
+        else:
+            return None
 
 
 def _make_hash(*parts):
@@ -180,7 +186,7 @@ def clear_cache():
         shutil.rmtree(CACHE_DIR)
 
 
-def get_cache_id(func: Callable, args: list, kwargs: dict,
+def _get_cache_id(func: Callable, args: list, kwargs: dict,
                  root: Optional[str] = None, strict: bool = False):
     return _make_hash(_func_fingerprint(func, root=root, strict=strict),
                       _arg_fingerprint(args, kwargs, strict=strict))
@@ -235,7 +241,7 @@ def cache(root: Optional[str] = None, strict: bool = False):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, no_cache=False, **kwargs):
-            cache_id = get_cache_id(func, args, kwargs, root=root, strict=strict)
+            cache_id = _get_cache_id(func, args, kwargs, root=root, strict=strict)
             cache_path = os.path.join(CACHE_DIR, cache_id)
             if (not REFRESH) and (not no_cache) and os.path.isfile(cache_path):
                 return _read_cache(cache_path)

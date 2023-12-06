@@ -197,8 +197,8 @@ print("\nCalling cached_func(100, fn=make_thing)...")
 print(cached_func(100, fn=make_thing))
 
 print("\nMaking sure cache_id is deterministic across processes when args include functions")
-print("get_cache_id(make_thing, [make_thing], dict(fn=make_thing))")
-print(funcache.get_cache_id(make_thing, [make_thing], dict(fn=make_thing)))
+print("_get_cache_id(make_thing, [make_thing], dict(fn=make_thing))")
+print(funcache._get_cache_id(make_thing, [make_thing], dict(fn=make_thing)))
 
 print("""
 ###############################################################################
@@ -232,12 +232,12 @@ print("\nUse @funcache.cache(strict=True) if you want to be sure all your "
 
 with catch_exception():
     print("\nget_cache_id(make_thing, [[1]], {})")
-    print(funcache.get_cache_id(make_thing, [[1]], {}))
+    print(funcache._get_cache_id(make_thing, [[1]], {}))
 
 with catch_exception():
     print("\nget_cache_id(make_thing, [[0]], {})")
-    print(funcache.get_cache_id(make_thing, [[0]], {}))
+    print(funcache._get_cache_id(make_thing, [[0]], {}))
 
 with catch_exception():
     print("\nget_cache_id(make_thing, [[1]], {}, strict=True)")
-    print(funcache.get_cache_id(make_thing, [[1]], {}, strict=True))
+    print(funcache._get_cache_id(make_thing, [[1]], {}, strict=True))

@@ -128,7 +128,7 @@ EXECUTED
 {"a": 102}
 
 Making sure cache_id is deterministic across processes when args include functions
-get_cache_id(make_thing, [make_thing], dict(fn=make_thing))
+_get_cache_id(make_thing, [make_thing], dict(fn=make_thing))
 494defc79b22ff3da12928f37a9b1c15
 
 ###############################################################################

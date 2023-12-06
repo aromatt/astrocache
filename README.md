@@ -1,4 +1,4 @@
-# astrocache [![Build Status](https://app.travis-ci.com/aromatt/astrocache.svg?branch=main)](https://app.travis-ci.com/aromatt/astrocache)
+# astrocache [![Build Status](https://app.travis-ci.com/aromatt/funcache.svg?branch=main)](https://app.travis-ci.com/aromatt/funcache)
 Durable memoization that automatically refreshes as you update your source code.
 
 ## Installation

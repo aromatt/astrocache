@@ -1,6 +1,13 @@
 # funcache [![Build Status](https://app.travis-ci.com/aromatt/funcache.svg?branch=main)](https://app.travis-ci.com/aromatt/funcache)
 Durable memoization that automatically refreshes as you update your source code.
 
+## Installation
+Requires Python >= 3.9.
+
+```
+python3 -m pip install funcache
+```
+
 ## What is this?
 This library provides [memoization](https://en.wikipedia.org/wiki/Memoization) for
 Python functions. This cache is persisted to disk, and is sensitive not only to the
@@ -48,8 +55,11 @@ memoization, without having to worry about clearing the cache.
 While `funcache` handles most situations in application code, there is a gotcha
 related to referencing functions as values.
 
-Other functions referenced within your decorated function are only inspected
-if they are called, passed in, or defined in your cached function.
+Functions referenced within your cached function are only inspected if your cached
+function does any of these:
+* Receives the referenced function as an argument
+* Calls the referenced function
+* Contains the definition of the referenced function
 
 Here are some examples to illustrate this:
 

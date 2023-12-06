@@ -22,8 +22,8 @@ import astrocache
 def foo(a, b):
     return slow_fn(a) + b
 ```
-This creates an on-disk cache for `foo`, which avoids doing the same
-expensive work more than once for a given input.
+This creates an on-disk cache for `foo`, which avoids doing the same work more than
+once for a given input.
 
 But what if you change the implementation of `foo`?
 
@@ -45,15 +45,23 @@ As an example, imagine you're rapidly iterating on a program or notebook that
 processes data in several expensive steps, or hits a usage-limited API.
 
 Memoization could make you more productive, but you'd have to remember to clear the
-various cache entries as you iterated on your code. This would be especially cumbersome
+various cache entries as you developed your code. This would be especially cumbersome
 if you memoized shared library functions.
 
-This library automates this for you, allowing you to rapidly iterate, aided by
-memoization, without having to worry about clearing the cache.
+This library automates this for you, allowing you to take advantage of memoization
+without having to worry about clearing the cache.
+
+## How does it work?
+Astrocache creates a fingerprint of your function's abstract syntax tree (AST)
+using the [ast](https://docs.python.org/3/library/ast.html) module from the standard
+library.
+
+When your function is called, this fingerprint is combined with the function's
+arguments to create a cache key. The return value of the function call is then
+written to the cache under this key.
 
 ## Limitation: referenced functions
-While `astrocache` handles most situations in application code, there is a gotcha
-related to referencing functions as values.
+There is a caveat related to referencing functions as values.
 
 Functions referenced within your cached function are only inspected if your cached
 function does any of these:

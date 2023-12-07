@@ -68,13 +68,27 @@ clear the various cache entries as you updated your code.
 This library automates this for you, allowing you to take advantage of memoization
 without needing to worry about clearing the cache.
 
-## Limitation: referenced functions
-There is a caveat related to referencing functions as values.
+## Limitations
+### Referenced functions
+There is a caveat regarding AST inspection of functions that are referenced, but not
+invoked. Example:
 
-Functions referenced within your cached function are only included in the AST
+```python
+import astrocache
+
+def bar(a):
+    return a + 1
+
+@astrocache.cache()
+def foo(x):
+    return baz(bar)
+```
+Here, `bar` is referenced (passed as an argument), but not invoked, by `foo`.
+
+Functions appearing within your cached function are only included in the AST
 fingerprint if your cached function does any of these:
-* Receives the referenced function as an argument
 * Calls the referenced function
+* Receives the referenced function as an argument
 * Contains the definition of the referenced function
 
 Here are some examples to illustrate this:
@@ -87,7 +101,7 @@ def foo(referenced_function):
     referenced_function(1)
 ```
 
-✅ Passing a function as a parameter
+✅ Receiving the function as an argument
 ```python
 @astrocache.cache()
 def foo(referenced_function):

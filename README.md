@@ -39,7 +39,7 @@ def foo(a, b):
 ```
 Your cache entries are no longer valid.
 
-Luckily, `astrocache` is aware of this. It will create new cache entries for the new
+Luckily, astrocache is aware of this. It will create new cache entries for the new
 version of `foo`.
 
 This treatment extends recursively to any function called by `foo` as well. In this
@@ -137,4 +137,16 @@ def foo():
 
 ## Related projects
 
-  * [joblib](https://github.com/joblib/joblib)
+### [joblib](https://github.com/joblib/joblib)
+Among joblib's excellent suite of pipeline processing tools, there is a memoization
+decorator similar to `@astrocache.cache()`. This decorator is also source-code-aware,
+with some key differences:
+* It does not inspect the function's AST, just the literal source. So it doesn't
+  recursively inspect called functions, and it's sensitive to whitespace and
+  comments.
+* It only tracks the latest version of your function (identified by source file path
+  and function name). When you update your code, the cache entries are all marked as
+  dirty, and will be overwritten. With astrocache, you could return to a previous
+  version of your code without losing the cache history.
+* As a more mature library, it has various optimizations for large objects and
+  special support for numpy arrays.

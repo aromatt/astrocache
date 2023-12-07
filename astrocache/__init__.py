@@ -27,7 +27,7 @@ class Function(NamedTuple):
     filename: Optional[Path]
 
     @classmethod
-    def from_func(cls, func: Callable, strict: bool = False):
+    def from_func(cls, func: Callable):
         if hasattr(builtins, func.__name__):
             filename = '<builtin>'
             src = None
@@ -36,11 +36,7 @@ class Function(NamedTuple):
                 filename = Path(func.__code__.co_filename)
                 src = textwrap.dedent(inspect.getsource(func))
             except:
-                if not strict:
-                    filename = '<unknown>'
-                    src = None
-                else:
-                    raise ValueError(f"Unable to find source for function {func.__module__}.{func.__name__}")
+                raise ValueError(f"Unable to find source for function {func.__module__}.{func.__name__}")
         node = ast.parse(src, filename=filename) if src else None
         return cls(function=func,
                    name=func.__name__,
@@ -50,7 +46,7 @@ class Function(NamedTuple):
                    filename=filename)
 
     @classmethod
-    def from_call(cls, caller, node: ast.Call, strict: bool = False):
+    def from_call(cls, caller, node: ast.Call):
         """Given the provided ast.Call `node` within Function `caller`, return
         the called function as a Function or None"""
         func = None
@@ -74,13 +70,11 @@ class Function(NamedTuple):
                 if parent:
                     func = getattr(parent, func_name)
         if func:
-            return Function.from_func(func, strict=strict)
-        elif strict:
-            raise ValueError(f"Unable to find function from {ast.dump(node)}")
+            return Function.from_func(func)
         else:
-            return None
+            raise ValueError(f"Unable to find function from {ast.dump(node)}")
 
-    def fingerprint(self, root: Optional[str] = None, strict: bool = False):
+    def fingerprint(self, root: Optional[str] = None):
         """Return the implementation fingerprint for this Function. Provide
         `root` to limit the depth of introspection to a particular directory."""
         if root is None:
@@ -96,10 +90,10 @@ class Function(NamedTuple):
             for child_node in ast.iter_child_nodes(node):
                 # To recurse into a call; we must find the called function
                 if type(child_node) == ast.Call:
-                    called_func = Function.from_call(func, child_node, strict=strict)
+                    called_func = Function.from_call(func, child_node)
                     if called_func:
                         defs.update(_get_func_defs(called_func, called_func.ast))
-                    elif strict:
+                    else:
                         raise ValueError(f"Unable to find function from {ast.dump(node)}")
                 else:
                     defs.update(_get_func_defs(func, child_node))
@@ -110,42 +104,34 @@ class Function(NamedTuple):
         return parts
 
     def __hash__(self):
-        return self.fingerprint(strict=True)
+        return self.fingerprint()
 
 
-def _value_hash(obj, strict: bool = False):
-    """Returns a deterministic hash representing the value of obj if possible;
-    otherwise returns None, or if `strict` then raises an exception."""
-    # Support deterministic hashes for functions as args!
+def _value_hash(obj):
+    """Returns a deterministic hash representing the value of obj"""
+    # Support deterministic hashes for functions as args.
+    # This adds support for inspecting ASTs of functions that are received as
+    # arguments by a cached function.
     if isinstance(obj, Callable):
-        return Function.from_func(obj, strict=strict).fingerprint()
+        return Function.from_func(obj).fingerprint()
     # Do not use __hash__ if it was inherited from `object`
     elif type(obj).__hash__ != object.__hash__:
-        try:
-            return hash(obj)
-        except Exception as e:
-            if strict:
-                raise ValueError(f"Unable to hash {type(obj)} {obj}: {e}")
-            else:
-                return None
+        return hash(obj)
     else:
-        if strict:
-            raise ValueError(f"Unable to hash {type(obj)} {obj}: {e}")
-        else:
-            return None
+        raise ValueError(f"Unable to hash {type(obj)} {obj}: {e}")
 
 
 def _make_hash(*parts):
     return hashlib.md5(str(parts).encode()).hexdigest()
 
 
-def _func_fingerprint(func: Callable, root: Optional[str] = None, strict: bool = False):
-    return Function.from_func(func, strict=strict).fingerprint(root=root, strict=strict)
+def _func_fingerprint(func: Callable, root: Optional[str] = None):
+    return Function.from_func(func).fingerprint(root=root)
 
 
-def _arg_fingerprint(args: list, kwargs: dict, strict: bool = False):
+def _arg_fingerprint(args: list, kwargs: dict):
     return [
-        *[_value_hash(x, strict=strict) for x in args],
+        *[_value_hash(x) for x in args],
         *[(k, _value_hash(v)) for k,v in kwargs.items()],
     ]
 
@@ -187,12 +173,12 @@ def clear_cache():
 
 
 def _get_cache_id(func: Callable, args: list, kwargs: dict,
-                 root: Optional[str] = None, strict: bool = False):
-    return _make_hash(_func_fingerprint(func, root=root, strict=strict),
-                      _arg_fingerprint(args, kwargs, strict=strict))
+                 root: Optional[str] = None):
+    return _make_hash(_func_fingerprint(func, root=root),
+                      _arg_fingerprint(args, kwargs))
 
 
-def cache(root: Optional[str] = None, strict: bool = False):
+def cache(root: Optional[str] = None):
     """
     Decorator that adds a durable cache to the wrapped function.
 
@@ -207,9 +193,6 @@ def cache(root: Optional[str] = None, strict: bool = False):
                           limits the scope of function implementation inspection
                           to the specified directory. Defaults to the directory
                           containing the function's module.
-    strict (bool): If True, raises an exception for any unhashable arguments or
-                   if any referenced functions cannot be found. If False, skips
-                   over unhashable parts and unfound functions. Defaults to False.
 
     Returns:
     Callable: A wrapped function with caching applied.
@@ -221,9 +204,9 @@ def cache(root: Optional[str] = None, strict: bool = False):
     def my_function(arg1, arg2):
         # Function implementation
 
-    You can also specify the `root` and `strict` parameters:
+    You can also specify the `root` option:
 
-    @astrocache.cache(root='/path/to/inspect', strict=True)
+    @astrocache.cache(root='/path/to/inspect')
     def another_function(arg1, arg2):
         # Function implementation
 
@@ -241,7 +224,7 @@ def cache(root: Optional[str] = None, strict: bool = False):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, no_cache=False, **kwargs):
-            cache_id = _get_cache_id(func, args, kwargs, root=root, strict=strict)
+            cache_id = _get_cache_id(func, args, kwargs, root=root)
             cache_path = os.path.join(CACHE_DIR, cache_id)
             if (not REFRESH) and (not no_cache) and os.path.isfile(cache_path):
                 return _read_cache(cache_path)

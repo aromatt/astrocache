@@ -1,8 +1,7 @@
 
-###############################################################################
-# Function implementation fingerprint
-###############################################################################
-
+#######################################
+# function implementation fingerprint #
+#######################################
 Using the following definitions:
 def three(h):
     return json.dumps(h)
@@ -58,10 +57,9 @@ Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
 Changing implementation of fn_to_pass()
 Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
 
-###############################################################################
-# @astrocache.cache()
-###############################################################################
-
+#######################
+# @astrocache.cache() #
+#######################
 Using the following definition:
 @astrocache.cache()
 def cached_func(x, **kwargs):
@@ -98,10 +96,9 @@ EXECUTED
 Calling cached_func(999, foo=True)...
 {"a": 1001}
 
-###############################################################################
-# no_cache
-###############################################################################
-
+############
+# no_cache #
+############
 Calling cached_func(999, foo=True, no_cache=True)...
 EXECUTED
 {"a": 1001}
@@ -110,10 +107,9 @@ Calling cached_func(999, foo=True, no_cache=True)...
 EXECUTED
 {"a": 1001}
 
-###############################################################################
-# passing functions into cached functions
-###############################################################################
-
+###########################################
+# passing functions into cached functions #
+###########################################
 Calling cached_func(100, fn=make_thing)...
 EXECUTED
 {"a": 102}
@@ -131,35 +127,22 @@ Making sure cache_id is deterministic across processes when args include functio
 _get_cache_id(make_thing, [make_thing], dict(fn=make_thing))
 494defc79b22ff3da12928f37a9b1c15
 
-###############################################################################
-# strict
-###############################################################################
-
+##############
+# exceptions #
+##############
 Using the following definition:
-@astrocache.cache(strict=True, root='/')
-def strictly_cached(a):
+@astrocache.cache(root='/')
+def root_fn(a):
     return json.dumps(a)
 
-Calling strictly_cached(1)
+Calling root_fn(1)
 Exception: Unable to find source for function _json.encode_basestring_ascii
 
-Using the following definition:
-@astrocache.cache(strict=True)
-def strictly_cached(a):
-    return json.dumps(a)
-
-Calling strictly_cached(1)
-1
-Calling strictly_cached([1])
-Exception: Unable to hash <class 'list'> [1]: unhashable type: 'list'
-
-Use @astrocache.cache(strict=True) if you want to be sure all your arguments are being included in the cache key.
-
 get_cache_id(make_thing, [[1]], {})
-fe01a6ea9f12262938d74edb013e739a
+Exception: unhashable type: 'list'
 
 get_cache_id(make_thing, [[0]], {})
-fe01a6ea9f12262938d74edb013e739a
+Exception: unhashable type: 'list'
 
-get_cache_id(make_thing, [[1]], {}, strict=True)
-Exception: Unable to hash <class 'list'> [1]: unhashable type: 'list'
+get_cache_id(make_thing, [[1]], {})
+Exception: unhashable type: 'list'

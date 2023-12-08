@@ -9,6 +9,33 @@ from contextlib import contextmanager
 import astrocache
 import foo
 
+
+def announce(msg):
+    print()
+    print('#' * (len(msg) + 4))
+    print('# ' + msg + ' #')
+    print('#' * (len(msg) + 4))
+
+
+def test(fn, *args, **kwargs):
+    param_str = ', '.join([*map(repr, sanitize(args)),
+                           *[f"{k}={v}" for k,v in sanitize(kwargs).items()]])
+    try:
+        result = fn(*args, **kwargs)
+    except Exception as e:
+        result = f"{type(e).__name__}: {e}"
+    if hasattr(fn, '__self__'):
+        owner = fn.__self__
+        if hasattr(owner, '__name__'):
+            owner_name = owner.__name__
+        else:
+            owner_name = str(owner)
+        name = f"{owner_name}.{fn.__name__}"
+    else:
+        name = fn.__qualname__
+    print(f"{name}({param_str}) => {result}")
+
+
 @contextmanager
 def catch_exception():
     try:
@@ -16,22 +43,28 @@ def catch_exception():
     except Exception as e:
         print(f"Exception: {e}")
 
+
 def func_fingerprint_hash(func, **kwargs):
     return astrocache._make_hash(astrocache._func_fingerprint(one, **kwargs))
 
+
 def print_fingerprint(func):
     print(f"Fingerprint hash for {func.__name__}(): {func_fingerprint_hash(func)}")
+
 
 def two(c):
     # Call a function in a different module
     return foo.three({'a': c + 1})
 
+
 def make_thing(a):
     return a + 1
+
 
 def nested_function_def():
     def blah(x):
         return x + 1
+
 
 def nested_class_def():
     class Foo:
@@ -39,15 +72,19 @@ def nested_class_def():
             self.thing = make_thing(a)
     return Foo
 
+
 def fn_to_assign(x):
     return x + 1
+
 
 def fn_to_pass(x):
     return x * 1
 
+
 def think_about_function(fn):
     thoughts = [fn]
     return fn
+
 
 def one(a, b):
     # Call a function that contains a function definition
@@ -60,11 +97,8 @@ def one(a, b):
     think_about_function(fn_to_pass)
     return two(a + b)
 
-print("""
-###############################################################################
-# Function implementation fingerprint
-###############################################################################
-""")
+
+announce("function implementation fingerprint")
 
 print("Using the following definitions:")
 print(inspect.getsource(foo.three))
@@ -118,14 +152,11 @@ print_fingerprint(one)
 # By expanding the scope of inspection to '/', we include the implementation of
 # other libraries, e.g. the json module (used by foo.three())
 # TODO Write a good test case for this. Currently this is pretty
-#      non-deterministic because it depends on system python libraries.
+#      non-deterministic because it depends on the python environment.
 # print(f"\nFingerprint of one() with root='/': {func_fingerprint_hash(one, root='/')}")
 
-print("""
-###############################################################################
-# @astrocache.cache()
-###############################################################################
-""")
+
+announce("@astrocache.cache()")
 
 astrocache.clear_cache()
 
@@ -165,11 +196,7 @@ print(cached_func(999, foo=True))
 print("\nCalling cached_func(999, foo=True)...")
 print(cached_func(999, foo=True))
 
-print("""
-###############################################################################
-# no_cache
-###############################################################################
-""")
+announce("no_cache")
 
 print("Calling cached_func(999, foo=True, no_cache=True)...")
 print(cached_func(999, foo=True, no_cache=True))
@@ -177,11 +204,7 @@ print(cached_func(999, foo=True, no_cache=True))
 print("\nCalling cached_func(999, foo=True, no_cache=True)...")
 print(cached_func(999, foo=True, no_cache=True))
 
-print("""
-###############################################################################
-# passing functions into cached functions
-###############################################################################
-""")
+announce("passing functions into cached functions")
 
 print("Calling cached_func(100, fn=make_thing)...")
 print(cached_func(100, fn=make_thing))
@@ -200,35 +223,16 @@ print("\nMaking sure cache_id is deterministic across processes when args includ
 print("_get_cache_id(make_thing, [make_thing], dict(fn=make_thing))")
 print(astrocache._get_cache_id(make_thing, [make_thing], dict(fn=make_thing)))
 
-print("""
-###############################################################################
-# strict
-###############################################################################
-""")
+announce("exceptions")
 
-@astrocache.cache(strict=True, root='/')
-def strictly_cached(a):
+@astrocache.cache(root='/')
+def root_fn(a):
     return json.dumps(a)
 print("Using the following definition:")
-print(inspect.getsource(strictly_cached))
+print(inspect.getsource(root_fn))
 with catch_exception():
-    print("Calling strictly_cached(1)")
-    print(strictly_cached(1))
-
-@astrocache.cache(strict=True)
-def strictly_cached(a):
-    return json.dumps(a)
-print("\nUsing the following definition:")
-print(inspect.getsource(strictly_cached))
-with catch_exception():
-    print("Calling strictly_cached(1)")
-    print(strictly_cached(1))
-with catch_exception():
-    print("Calling strictly_cached([1])")
-    print(strictly_cached([1]))
-
-print("\nUse @astrocache.cache(strict=True) if you want to be sure all your "
-      + "arguments are being included in the cache key.")
+    print("Calling root_fn(1)")
+    print(root_fn(1))
 
 with catch_exception():
     print("\nget_cache_id(make_thing, [[1]], {})")
@@ -239,5 +243,5 @@ with catch_exception():
     print(astrocache._get_cache_id(make_thing, [[0]], {}))
 
 with catch_exception():
-    print("\nget_cache_id(make_thing, [[1]], {}, strict=True)")
-    print(astrocache._get_cache_id(make_thing, [[1]], {}, strict=True))
+    print("\nget_cache_id(make_thing, [[1]], {})")
+    print(astrocache._get_cache_id(make_thing, [[1]], {}))

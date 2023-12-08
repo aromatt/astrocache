@@ -270,6 +270,16 @@ with catch_exception():
     invoke(root_fn, 1)
 
 
-remark("Can args include lists and dicts?")
+remark("Can args include lists?")
 with catch_exception():
     invoke(astrocache._get_cache_id, make_thing, [[1]], {})
+
+
+remark("Can args include dicts?")
+with catch_exception():
+    invoke(astrocache._get_cache_id, make_thing, [{1: 2}], {})
+
+
+remark("Can args include sets?")
+with catch_exception():
+    invoke(astrocache._get_cache_id, make_thing, [set([1])], {})

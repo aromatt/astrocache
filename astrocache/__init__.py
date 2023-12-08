@@ -107,16 +107,29 @@ class Function(NamedTuple):
         return self.fingerprint()
 
 
+def _hash_prep(data):
+    """Returns the information contained in `data`, restructured in a
+    deterministic and hashable way."""
+    if isinstance(data, set):
+        prepped = tuple(sorted(map(_hash_prep, data)))
+    elif isinstance(data, dict):
+        prepped = tuple(sorted((k, _hash_prep(v)) for k, v in data.items()))
+    elif isinstance(data, (tuple, list, map, filter)):
+        prepped = tuple(map(_hash_prep, data))
+    else:
+        prepped = data
+    return (type(data), prepped)
+
+
 def _value_hash(obj):
     """Returns a deterministic hash representing the value of obj"""
-    # Support deterministic hashes for functions as args.
-    # This adds support for inspecting ASTs of functions that are received as
-    # arguments by a cached function.
+    # Include functions received as args into fingerprints. This allows us to
+    # include their ASTs in the fingerprint of the cached function.
     if isinstance(obj, Callable):
         return Function.from_func(obj).fingerprint()
     # Do not use __hash__ if it was inherited from `object`
     elif type(obj).__hash__ != object.__hash__:
-        return hash(obj)
+        return _make_hash(_hash_prep(obj))
     else:
         raise ValueError(f"Unable to hash {type(obj)} {obj}: {e}")
 

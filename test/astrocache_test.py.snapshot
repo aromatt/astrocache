@@ -143,6 +143,14 @@ def root_fn(a):
 >>> root_fn(1)
 ValueError: Unable to find source for function _json.encode_basestring_ascii
 
-# Can args include lists and dicts?
+# Can args include lists?
 >>> _get_cache_id('make_thing', [[1]], {})
-TypeError: unhashable type: 'list'
+220174a35903d7881edf3f2e9d93fb8e
+
+# Can args include dicts?
+>>> _get_cache_id('make_thing', [{1: 2}], {})
+01344ab1c6bfaba38f190e6bcbbd008d
+
+# Can args include sets?
+>>> _get_cache_id('make_thing', [{1}], {})
+396c6ec3199bb49f0c312fa30ebc92a8

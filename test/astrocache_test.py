@@ -273,6 +273,9 @@ remark("Can args include sets?")
 invoke(astrocache._get_cache_id, make_thing, [set([1])], {})
 
 
+remark("Can args include None?")
+invoke(astrocache._get_cache_id, make_thing, [None], {})
+
 class Foo:
     def __init__(self, a): self.a = a
     def __repr__(self): return f'Foo({self.a})'

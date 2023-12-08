@@ -155,6 +155,10 @@ ValueError: Unable to find source for function _json.encode_basestring_ascii
 >>> _get_cache_id('make_thing', [{1}], {})
 396c6ec3199bb49f0c312fa30ebc92a8
 
+# Can args include None?
+>>> _get_cache_id('make_thing', [None], {})
+56e49d6be4da9d39c3ef699136c0dc00
+
 # Using the following definition:
 ```
 class Foo:

@@ -118,6 +118,8 @@ def _hash_prep(data):
         prepped = tuple(map(_hash_prep, data))
     else:
         prepped = data
+    # Include the type in order to differentiate between collection types
+    # TODO: is this a good approach?
     return (type(data), prepped)
 
 
@@ -127,11 +129,8 @@ def _value_hash(obj):
     # include their ASTs in the fingerprint of the cached function.
     if isinstance(obj, Callable):
         return Function.from_func(obj).fingerprint()
-    # Do not use __hash__ if it was inherited from `object`
-    elif type(obj).__hash__ != object.__hash__:
-        return _make_hash(_hash_prep(obj))
     else:
-        raise ValueError(f"Unable to hash {type(obj)} {obj}")
+        return _make_hash(_hash_prep(obj))
 
 
 def _make_hash(*parts):

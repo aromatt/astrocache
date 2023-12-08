@@ -1,8 +1,11 @@
 
+
 #######################################
-# function implementation fingerprint #
+# Function implementation fingerprint #
 #######################################
-Using the following definitions:
+
+# Using the following definitions:
+```
 def three(h):
     return json.dumps(h)
 
@@ -40,109 +43,106 @@ def one(a, b):
     think_about_function(fn_to_pass)
     return two(a + b)
 
+```
+
+# What is the fingerprint of one()?
 Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
 
-Adding a comment to make_thing()
+# Adding a comment to make_thing()
 Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
 
-Changing some formatting in make_thing()
+# Change formatting in make_thing()
 Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
 
-Changing implementation of make_thing()
+# Change behavior of make_thing()
 Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
 
-Changing implementation of fn_to_assign()
+# Change implementation of fn_to_assign(). TODO support this! fingerprint should change
 Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
 
-Changing implementation of fn_to_pass()
+# Change implementation of fn_to_pass(). TODO support this! fingerprint should change
 Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
+
 
 #######################
 # @astrocache.cache() #
 #######################
-Using the following definition:
+
+# Using the following definition:
+```
 @astrocache.cache()
 def cached_func(x, **kwargs):
     print("EXECUTED")
     return one(x, 1)
 
-Calling cached_func(100) for the first time...
+```
+
+# Testing basic memoization
+>>> cached_func(100)
 EXECUTED
 {"a": 102}
-
-Calling cached_func(100) again...
+>>> cached_func(100)
 {"a": 102}
 
-Changing the implementation of make_thing(100)...
-
-Calling cached_func(100)...
+# Change behavior of make_thing(100)
+>>> cached_func(100)
 EXECUTED
 {"a": 102}
-
-Calling cached_func(100)...
+>>> cached_func(100)
 {"a": 102}
 
-Calling cached_func(999)...
+# Different args
+>>> cached_func(999)
+EXECUTED
+{"a": 1001}
+>>> cached_func(999)
+{"a": 1001}
+
+# Adding kwarg
+>>> cached_func(999, foo=True)
+EXECUTED
+{"a": 1001}
+>>> cached_func(999, foo=True)
+{"a": 1001}
+
+# Using no_cache
+>>> cached_func(999, foo=True, no_cache=True)
 EXECUTED
 {"a": 1001}
 
-Calling cached_func(999)...
-{"a": 1001}
-
-Calling cached_func(999, foo=True)...
+# Are functions passed into cached function included in fingerprint?
+>>> cached_func(100, func=make_thing)
 EXECUTED
-{"a": 1001}
+{"a": 102}
+>>> cached_func(100, func=make_thing)
+{"a": 102}
 
-Calling cached_func(999, foo=True)...
-{"a": 1001}
-
-############
-# no_cache #
-############
-Calling cached_func(999, foo=True, no_cache=True)...
-EXECUTED
-{"a": 1001}
-
-Calling cached_func(999, foo=True, no_cache=True)...
-EXECUTED
-{"a": 1001}
-
-###########################################
-# passing functions into cached functions #
-###########################################
-Calling cached_func(100, fn=make_thing)...
+# Change behavior of make_thing()
+>>> cached_func(100, func=make_thing)
 EXECUTED
 {"a": 102}
 
-Calling cached_func(100, fn=make_thing)...
-{"a": 102}
-
-Changing implementation of make_thing()
-
-Calling cached_func(100, fn=make_thing)...
-EXECUTED
-{"a": 102}
-
-Making sure cache_id is deterministic across processes when args include functions
+# Making sure cache_id is deterministic across processes when args include functions
 _get_cache_id(make_thing, [make_thing], dict(fn=make_thing))
 494defc79b22ff3da12928f37a9b1c15
 
+
 ##############
-# exceptions #
+# Exceptions #
 ##############
-Using the following definition:
+
+# Using the following definition:
+```
 @astrocache.cache(root='/')
 def root_fn(a):
     return json.dumps(a)
 
-Calling root_fn(1)
-Exception: Unable to find source for function _json.encode_basestring_ascii
+```
 
-get_cache_id(make_thing, [[1]], {})
-Exception: unhashable type: 'list'
+# Calling a cached function with root='/'
+>>> root_fn(1)
+ValueError: Unable to find source for function _json.encode_basestring_ascii
 
-get_cache_id(make_thing, [[0]], {})
-Exception: unhashable type: 'list'
-
-get_cache_id(make_thing, [[1]], {})
-Exception: unhashable type: 'list'
+# Can args include lists and dicts?
+>>> _get_cache_id('make_thing', [[1]], {})
+TypeError: unhashable type: 'list'

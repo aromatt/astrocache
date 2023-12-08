@@ -55,15 +55,7 @@ def invoke(fn, *args, **kwargs):
         result = fn(*args, **kwargs)
     except Exception as e:
         result = f"{type(e).__name__}: {e}"
-    print(f"{result}")
-
-
-@contextmanager
-def catch_exception():
-    try:
-        yield
-    except Exception as e:
-        print(f"Exception: {e}")
+    print(result)
 
 
 def func_fingerprint_hash(func, **kwargs):
@@ -266,20 +258,36 @@ print("```")
 
 
 remark("Calling a cached function with root='/'")
-with catch_exception():
-    invoke(root_fn, 1)
+invoke(root_fn, 1)
 
 
 remark("Can args include lists?")
-with catch_exception():
-    invoke(astrocache._get_cache_id, make_thing, [[1]], {})
+invoke(astrocache._get_cache_id, make_thing, [[1]], {})
 
 
 remark("Can args include dicts?")
-with catch_exception():
-    invoke(astrocache._get_cache_id, make_thing, [{1: 2}], {})
+invoke(astrocache._get_cache_id, make_thing, [{1: 2}], {})
 
 
 remark("Can args include sets?")
-with catch_exception():
-    invoke(astrocache._get_cache_id, make_thing, [set([1])], {})
+invoke(astrocache._get_cache_id, make_thing, [set([1])], {})
+
+
+class Foo:
+    def __init__(self, a): self.a = a
+    def __repr__(self): return f'Foo({self.a})'
+    def __hash__(self): hash(self.a)
+
+
+remark("Using the following definition:")
+print("```")
+print(inspect.getsource(Foo))
+print("```")
+
+
+remark("Can args include classes?")
+invoke(astrocache._get_cache_id, make_thing, [Foo], {})
+
+
+remark("Can args include instances of hashable user-defined classes?")
+invoke(astrocache._get_cache_id, make_thing, [Foo(1)], {})

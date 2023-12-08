@@ -131,7 +131,7 @@ def _value_hash(obj):
     elif type(obj).__hash__ != object.__hash__:
         return _make_hash(_hash_prep(obj))
     else:
-        raise ValueError(f"Unable to hash {type(obj)} {obj}: {e}")
+        raise ValueError(f"Unable to hash {type(obj)} {obj}")
 
 
 def _make_hash(*parts):

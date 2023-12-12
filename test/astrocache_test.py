@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# snapshot_extension=.md
 
 import inspect
 import json
@@ -39,11 +40,14 @@ def sanitize(data):
         return [sanitize(x) for x in data]
     elif isinstance(data, dict):
         return {k: sanitize(v) for k, v in data.items()}
+    elif isinstance(data, Callable):
+        return get_fn_name(data)
+    elif type(data).__repr__ == object.__repr__:
+        # Need to support classes without __repr__ implementations in order to
+        # test _make_hash() properly
+        return f'<{type(data).__name__} instance>'
     else:
-        if isinstance(data, Callable):
-            return get_fn_name(data)
-        else:
-            return data
+        return data
 
 
 def invoke(fn, *args, **kwargs):
@@ -276,11 +280,10 @@ invoke(astrocache._get_cache_id, make_thing, [set([1])], {})
 remark("Can args include None?")
 invoke(astrocache._get_cache_id, make_thing, [None], {})
 
+
 class Foo:
     def __init__(self, a): self.a = a
-    def __repr__(self): return f'Foo({self.a})'
-    def __hash__(self): hash(self.a)
-
+    def __hash__(self): return self.a
 
 remark("Using the following definition:")
 print("```")
@@ -292,5 +295,5 @@ remark("Can args include classes?")
 invoke(astrocache._get_cache_id, make_thing, [Foo], {})
 
 
-remark("Can args include instances of hashable user-defined classes?")
+remark("Can args include instances of user-defined classes?")
 invoke(astrocache._get_cache_id, make_thing, [Foo(1)], {})

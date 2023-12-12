@@ -46,22 +46,22 @@ def one(a, b):
 ```
 
 # What is the fingerprint of one()?
-Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
+Fingerprint hash for one(): cc6adb6c3b1f31ea33351c3410b78b9b
 
 # Adding a comment to make_thing()
-Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
+Fingerprint hash for one(): cc6adb6c3b1f31ea33351c3410b78b9b
 
 # Change formatting in make_thing()
-Fingerprint hash for one(): f542fe57471b063a4d74748c133a0029
+Fingerprint hash for one(): cc6adb6c3b1f31ea33351c3410b78b9b
 
 # Change behavior of make_thing()
-Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
+Fingerprint hash for one(): fee307a11892a7da3c4aefa9411c0f5f
 
 # Change implementation of fn_to_assign(). TODO support this! fingerprint should change
-Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
+Fingerprint hash for one(): fee307a11892a7da3c4aefa9411c0f5f
 
 # Change implementation of fn_to_pass(). TODO support this! fingerprint should change
-Fingerprint hash for one(): cf6ccac320953e9cfde034133bfbda3c
+Fingerprint hash for one(): fee307a11892a7da3c4aefa9411c0f5f
 
 
 #######################
@@ -124,7 +124,7 @@ EXECUTED
 
 # Making sure cache_id is deterministic across processes when args include functions
 _get_cache_id(make_thing, [make_thing], dict(fn=make_thing))
-494defc79b22ff3da12928f37a9b1c15
+24fc188cd2c6ca5cf417ce102eddb8c4
 
 
 ##############
@@ -145,26 +145,25 @@ ValueError: Unable to find source for function _json.encode_basestring_ascii
 
 # Can args include lists?
 >>> _get_cache_id('make_thing', [[1]], {})
-220174a35903d7881edf3f2e9d93fb8e
+f320090f7e42ee5ab0de0c1b10b9e1ff
 
 # Can args include dicts?
 >>> _get_cache_id('make_thing', [{1: 2}], {})
-01344ab1c6bfaba38f190e6bcbbd008d
+8a3d8b0356e1550140a6b6d67e087600
 
 # Can args include sets?
 >>> _get_cache_id('make_thing', [{1}], {})
-396c6ec3199bb49f0c312fa30ebc92a8
+c4f95f3677455495b226e6705afedd6a
 
 # Can args include None?
 >>> _get_cache_id('make_thing', [None], {})
-56e49d6be4da9d39c3ef699136c0dc00
+a7ae9dc1c122a61ac22e4abdadd83ad4
 
 # Using the following definition:
 ```
 class Foo:
     def __init__(self, a): self.a = a
     def __repr__(self): return f'Foo({self.a})'
-    def __hash__(self): hash(self.a)
 
 ```
 
@@ -174,4 +173,4 @@ ValueError: Unable to find source for function __main__.Foo
 
 # Can args include instances of hashable user-defined classes?
 >>> _get_cache_id('make_thing', [Foo(1)], {})
-4613c95ef922dfea8b76ff7ebc015eda
+2258ceae8daef9450aa2e4346001cc09

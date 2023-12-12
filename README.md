@@ -2,7 +2,7 @@
 Durable memoization that automatically refreshes as you update your source code.
 
 ## Installation
-Requires Python >= 3.9.
+Astrocache requires Python >= 3.9, and has no additional dependencies.
 
 ```
 python3 -m pip install astrocache
@@ -150,3 +150,11 @@ with some key differences:
   version of your code without losing the cache history.
 * As a more mature library, it has various optimizations for large objects and
   special support for numpy arrays.
+
+## Tests
+This project uses
+[baseline testing](https://nodiff.net/2023/01/introduction-to-baseline-testing).
+The test scripts in the `test` directory generate text files (`test/*.snapshot*`)
+that aim to serve as self-validating reference docs for astrocache.
+
+To run the tests, use `make test`.

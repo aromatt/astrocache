@@ -64,8 +64,24 @@ def print_status(path, status, maxwidth=None):
         maxwidth = len(name)
     print(name + ' ' * (maxwidth - len(name) + 8) + color(status.name, status.color))
 
+def get_snapshot_path(test_path: Path) -> str:
+    """
+    Returns the path of the snapshot file for the given test file,
+    which is '{test_path}.snapshot{added_extension}', where
+    added_extension is specified by a comment at the top of the test file.
+    """
+    suffix = test_path.suffix + '.snapshot'
+    with open(test_path, 'r') as f:
+        for line in f:
+            if not (line.startswith('#') or line == ''):
+                # Stop scanning after the first non-comment line
+                break
+            elif line.startswith('# snapshot_extension='):
+                suffix += line.split('=', 1)[1].strip()
+    return test_path.with_suffix(suffix)
+
 def run_test_case(path, update=False, maxwidth=None):
-    snap_path = path.parent / (path.name + '.snapshot')
+    snap_path = get_snapshot_path(path)
     status = Skipped
     diff = ''
     if snap_path.exists() or update:

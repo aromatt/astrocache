@@ -100,7 +100,7 @@ class Function(NamedTuple):
             return defs
 
         defs = _get_func_defs(self, self.ast)
-        parts = sorted((k,v) for k,v in defs.items())
+        parts = tuple(sorted((k,v) for k,v in defs.items()))
         return parts
 
     def __hash__(self):
@@ -129,11 +129,18 @@ def _value_hash(obj):
     # include their ASTs in the fingerprint of the cached function.
     if isinstance(obj, Callable):
         return Function.from_func(obj).fingerprint()
-    else:
-        return _make_hash(_hash_prep(obj))
+    elif type(obj).__repr__ == object.__repr__:
+        if type(obj).__hash__ == object.__hash__:
+            raise ValueError(f"No deterministic __hash__ method for {obj}")
+        else:
+            return hash(obj)
+    return _make_hash(_hash_prep(obj))
 
 
 def _make_hash(*parts):
+    # TODO using str is a problem, e.g. '<__main__.Foo object at 0x10337e9d0>'
+    # is the str representation of a class without a __repr__ method.
+    # instead of doing md5(str()) maybe it should be md5(pickle())
     return hashlib.md5(str(parts).encode()).hexdigest()
 
 
@@ -142,10 +149,8 @@ def _func_fingerprint(func: Callable, root: Optional[str] = None):
 
 
 def _arg_fingerprint(args: list, kwargs: dict):
-    return [
-        *[_value_hash(x) for x in args],
-        *[(k, _value_hash(v)) for k,v in kwargs.items()],
-    ]
+    return tuple(_value_hash(x) for x in args) + \
+           tuple((k, _value_hash(v)) for k,v in kwargs.items())
 
 
 @contextmanager

@@ -10,20 +10,22 @@ from contextlib import contextmanager
 from typing import Callable
 
 import astrocache
-import foo
+import other_module
 
 ##########################
 # TEST UTILITY FUNCTIONS #
 ##########################
 
-def announce(msg):
-    print("\n")
-    print('#' * (len(msg) + 4))
-    print('# ' + msg + ' #')
-    print('#' * (len(msg) + 4))
+# Markdown generation helpers
+def h1(msg): print(f"\n# {msg}")
+def h2(msg): print(f"\n## {msg}")
+def h3(msg): print(f"\n### {msg}")
+def code_block(code): print(f"```\n{code}```")
+def text_block(msg): print('\n' + '\n'.join(textwrap.wrap(msg, width=80)))
 
 
 def get_fn_name(fn):
+    """Returns the name of `fn` as a deterministic string"""
     if hasattr(fn, '__self__'):
         owner = fn.__self__
         if hasattr(owner, '__name__'):
@@ -51,15 +53,17 @@ def sanitize(data):
 
 
 def invoke(fn, *args, **kwargs):
+    """Call `fn` with provided args and kwargs, printing the invocation and its
+    result"""
     name = get_fn_name(fn)
     param_str = ', '.join([*map(repr, sanitize(args)),
                            *[f"{k}={v}" for k,v in sanitize(kwargs).items()]])
-    print(f">>> {name}({param_str})")
+    command = f">>> {name}({param_str})"
     try:
         result = fn(*args, **kwargs)
     except Exception as e:
         result = f"{type(e).__name__}: {e}"
-    print(result)
+    code_block(f"{command}\n{result}")
 
 
 def func_fingerprint_hash(func, **kwargs):
@@ -67,23 +71,15 @@ def func_fingerprint_hash(func, **kwargs):
 
 
 def print_fingerprint(func):
-    print(f"Fingerprint hash for {func.__name__}(): {func_fingerprint_hash(func)}")
-
-
-def remark(msg):
-    print(f"\n# {msg}")
+    print(f"Fingerprint hash for `{func.__name__}()`: `{func_fingerprint_hash(func)}`")
 
 
 ########################
 # FUNCTIONS UNDER TEST #
 ########################
 
-def two(c):
-    # Call a function in a different module
-    return foo.three({'a': c + 1})
 
-
-def make_thing(a):
+def increment(a):
     return a + 1
 
 
@@ -93,10 +89,10 @@ def nested_function_def():
 
 
 def nested_class_def():
-    class Foo:
+    class DefInFunc:
         def __init__(self, a):
-            self.thing = make_thing(a)
-    return Foo
+            self.thing = increment(a)
+    return DefInFunc
 
 
 def fn_to_assign(x):
@@ -112,6 +108,12 @@ def think_about_function(fn):
     return fn
 
 
+def call_other_module(c):
+    # Call a function in a different module
+    return other_module.other_fn({'a': c + 1})
+
+
+
 # TODO split this up... this is pretty cluttered
 def one(a, b):
     # Call a function that contains a function definition
@@ -122,77 +124,82 @@ def one(a, b):
     fn = fn_to_assign
     # Pass a function as an argument, but don't call it
     think_about_function(fn_to_pass)
-    return two(a + b)
+    return call_other_module(a + b)
 
 
 #######################
 # TESTING STARTS HERE #
 #######################
 
-announce("Function implementation fingerprint")
+h1("Function fingerprint")
+text_block("These tests show how a function's fingerprint hash is affected by "
+           "changes to its source code.")
 
-remark("Using the following definitions:")
-print("```")
-print(inspect.getsource(foo.three))
-print(inspect.getsource(two))
-print(inspect.getsource(make_thing))
-print(inspect.getsource(nested_function_def))
-print(inspect.getsource(nested_class_def))
-print(inspect.getsource(fn_to_assign))
-print(inspect.getsource(fn_to_pass))
-print(inspect.getsource(one))
-print("```")
+h2("Definitions")
+code_block("# (This is other_module.py)\n" +
+           inspect.getsource(other_module))
+code_block(inspect.getsource(call_other_module))
+code_block(inspect.getsource(increment))
+code_block(inspect.getsource(nested_function_def))
+code_block(inspect.getsource(nested_class_def))
+code_block(inspect.getsource(fn_to_assign))
+code_block(inspect.getsource(fn_to_pass))
+code_block(inspect.getsource(one))
 
 
-remark("What is the fingerprint of one()?")
 print_fingerprint(one)
 
 
-remark("Adding a comment to make_thing()")
-def make_thing(a):
+h2("Add a comment to `increment()`")
+def increment(a):
     # comment
     return a + 1
+code_block(inspect.getsource(increment))
 print_fingerprint(one)
 
 
-remark("Change formatting in make_thing()")
-def make_thing(a):
+h2("Change formatting in `increment()`")
+def increment(a):
     # comment
 
     return (a + \
             1)
+code_block(inspect.getsource(increment))
 print_fingerprint(one)
 
 
-remark("Change behavior of make_thing()")
-# Lineage: one() -> nested_function_def() -> class Foo -> __init__ -> make_thing()
-def make_thing(a):
+h2("Change behavior of `increment()`")
+# Lineage: one() -> nested_function_def() -> class DefInFunc -> __init__ -> increment()
+def increment(a):
     return a + 2
+code_block(inspect.getsource(increment))
 print_fingerprint(one)
 
 
-remark("Change implementation of fn_to_assign(). "
-       "TODO support this! fingerprint should change")
+h2("Change implementation of `fn_to_assign()`")
+text_block("TODO support this! fingerprint should change")
 def fn_to_assign(x):
     return x + 2
+code_block(inspect.getsource(fn_to_assign))
 print_fingerprint(one)
 
 
-remark("Change implementation of fn_to_pass(). "
-       "TODO support this! fingerprint should change")
+h2("Change implementation of `fn_to_pass()`")
+text_block("TODO support this! fingerprint should change")
 def fn_to_pass(x):
     return x * 2
+code_block(inspect.getsource(fn_to_pass))
 print_fingerprint(one)
 
 
 # TODO Write a good test case for this. Currently this is pretty
 #      non-deterministic because it depends on the python environment.
 # By expanding the scope of inspection to '/', we include the implementation of
-# other libraries, e.g. the json module (used by foo.three())
+# other libraries, e.g. the json module (used by other_module.three())
 # print(f"\nFingerprint of one() with root='/': {func_fingerprint_hash(one, root='/')}")
 
 
-announce("@astrocache.cache()")
+h1("`@astrocache.cache()`")
 astrocache.clear_cache()
 
 
@@ -202,98 +209,92 @@ def cached_func(x, **kwargs):
     return one(x, 1)
 
 
-remark("Using the following definition:")
-print("```")
-print(inspect.getsource(cached_func))
-print("```")
+h2("Definitions")
+code_block(inspect.getsource(cached_func))
 
 
-remark("Testing basic memoization")
+h2("Basic memoization")
 invoke(cached_func, 100)
 invoke(cached_func, 100)
 
 
-remark("Change behavior of make_thing(100)")
-def make_thing(a):
+h2("Change behavior of `increment(100)`")
+def increment(a):
     return a + 3
 invoke(cached_func, 100)
 invoke(cached_func, 100)
 
 
-remark("Different args")
+h2("Change args")
 invoke(cached_func, 999)
 invoke(cached_func, 999)
 
 
-remark("Adding kwarg")
+h2("Add kwarg")
 invoke(cached_func, 999, foo=True)
 invoke(cached_func, 999, foo=True)
 
 
-remark("Using no_cache")
+h2("Use no_cache")
 invoke(cached_func, 999, foo=True, no_cache=True)
 
 
-remark("Are functions passed into cached function included in fingerprint?")
-invoke(cached_func, 100, func=make_thing)
-invoke(cached_func, 100, func=make_thing)
-remark("Change behavior of make_thing()")
-def make_thing(x):
+h2("Are functions passed into cached function included in fingerprint?")
+invoke(cached_func, 100, func=increment)
+invoke(cached_func, 100, func=increment)
+text_block("Change behavior of increment()")
+def increment(x):
     return x + 2
-invoke(cached_func, 100, func=make_thing)
+code_block(inspect.getsource(increment))
+invoke(cached_func, 100, func=increment)
 
 
-remark("Making sure cache_id is deterministic across processes when args include functions")
-print("_get_cache_id(make_thing, [make_thing], dict(fn=make_thing))")
-print(astrocache._get_cache_id(make_thing, [make_thing], dict(fn=make_thing)))
+h2("Make sure cache_id is deterministic across processes when args include functions")
+invoke(astrocache._get_cache_id, increment, [increment], dict(fn=increment))
 
 
-announce("Exceptions")
+h1("Exceptions")
 
 
 @astrocache.cache(root='/')
 def root_fn(a):
     return json.dumps(a)
 
-remark("Using the following definition:")
-print("```")
-print(inspect.getsource(root_fn))
-print("```")
+h2("Definitions")
+code_block(inspect.getsource(root_fn))
 
 
-remark("Calling a cached function with root='/'")
+h2("Calling a cached function with root='/'")
 invoke(root_fn, 1)
 
 
-remark("Can args include lists?")
-invoke(astrocache._get_cache_id, make_thing, [[1]], {})
+h2("Can args include lists?")
+invoke(astrocache._get_cache_id, increment, [[1]], {})
 
 
-remark("Can args include dicts?")
-invoke(astrocache._get_cache_id, make_thing, [{1: 2}], {})
+h2("Can args include dicts?")
+invoke(astrocache._get_cache_id, increment, [{1: 2}], {})
 
 
-remark("Can args include sets?")
-invoke(astrocache._get_cache_id, make_thing, [set([1])], {})
+h2("Can args include sets?")
+invoke(astrocache._get_cache_id, increment, [set([1])], {})
 
 
-remark("Can args include None?")
-invoke(astrocache._get_cache_id, make_thing, [None], {})
+h2("Can args include None?")
+invoke(astrocache._get_cache_id, increment, [None], {})
 
 
-class Foo:
+class MyClass:
     def __init__(self, a): self.a = a
     def __hash__(self): return self.a
 
-remark("Using the following definition:")
-print("```")
-print(inspect.getsource(Foo))
-print("```")
+h2("Definitions")
+code_block(inspect.getsource(MyClass))
 
 
-remark("Can args include classes?")
-invoke(astrocache._get_cache_id, make_thing, [Foo], {})
+h2("Can args include classes?")
+invoke(astrocache._get_cache_id, increment, [MyClass], {})
 
 
-remark("Can args include instances of user-defined classes?")
-invoke(astrocache._get_cache_id, make_thing, [Foo(1)], {})
+h2("Can args include instances of user-defined classes?")
+invoke(astrocache._get_cache_id, increment, [MyClass(1)], {})

@@ -1,37 +1,47 @@
 
+# Function fingerprint
 
-#######################################
-# Function implementation fingerprint #
-#######################################
+These tests show how a function's fingerprint hash is affected by changes to its
+source code.
 
-# Using the following definitions:
+## Definitions
 ```
-def three(h):
+# (This is other_module.py)
+import json
+
+def other_fn(h):
     return json.dumps(h)
-
-def two(c):
+```
+```
+def call_other_module(c):
     # Call a function in a different module
-    return foo.three({'a': c + 1})
-
-def make_thing(a):
+    return other_module.other_fn({'a': c + 1})
+```
+```
+def increment(a):
     return a + 1
-
+```
+```
 def nested_function_def():
     def blah(x):
         return x + 1
-
+```
+```
 def nested_class_def():
-    class Foo:
+    class DefInFunc:
         def __init__(self, a):
-            self.thing = make_thing(a)
-    return Foo
-
+            self.thing = increment(a)
+    return DefInFunc
+```
+```
 def fn_to_assign(x):
     return x + 1
-
+```
+```
 def fn_to_pass(x):
     return x * 1
-
+```
+```
 def one(a, b):
     # Call a function that contains a function definition
     nested_function_def()
@@ -41,136 +51,176 @@ def one(a, b):
     fn = fn_to_assign
     # Pass a function as an argument, but don't call it
     think_about_function(fn_to_pass)
-    return two(a + b)
-
+    return call_other_module(a + b)
 ```
+Fingerprint hash for `one()`: `2844203ec8e932a051f80dcc36554193`
 
-# What is the fingerprint of one()?
-Fingerprint hash for one(): cc6adb6c3b1f31ea33351c3410b78b9b
+## Add a comment to `increment()`
+```
+def increment(a):
+    # comment
+    return a + 1
+```
+Fingerprint hash for `one()`: `2844203ec8e932a051f80dcc36554193`
 
-# Adding a comment to make_thing()
-Fingerprint hash for one(): cc6adb6c3b1f31ea33351c3410b78b9b
+## Change formatting in `increment()`
+```
+def increment(a):
+    # comment
 
-# Change formatting in make_thing()
-Fingerprint hash for one(): cc6adb6c3b1f31ea33351c3410b78b9b
+    return (a + \
+            1)
+```
+Fingerprint hash for `one()`: `2844203ec8e932a051f80dcc36554193`
 
-# Change behavior of make_thing()
-Fingerprint hash for one(): fee307a11892a7da3c4aefa9411c0f5f
+## Change behavior of `increment()`
+```
+def increment(a):
+    return a + 2
+```
+Fingerprint hash for `one()`: `7bec3656aaa21534a71cbbe0dd846c5b`
 
-# Change implementation of fn_to_assign(). TODO support this! fingerprint should change
-Fingerprint hash for one(): fee307a11892a7da3c4aefa9411c0f5f
+## Change implementation of `fn_to_assign()`
 
-# Change implementation of fn_to_pass(). TODO support this! fingerprint should change
-Fingerprint hash for one(): fee307a11892a7da3c4aefa9411c0f5f
+TODO support this! fingerprint should change
+```
+def fn_to_assign(x):
+    return x + 2
+```
+Fingerprint hash for `one()`: `7bec3656aaa21534a71cbbe0dd846c5b`
 
+## Change implementation of `fn_to_pass()`
 
-#######################
-# @astrocache.cache() #
-#######################
+TODO support this! fingerprint should change
+```
+def fn_to_pass(x):
+    return x * 2
+```
+Fingerprint hash for `one()`: `7bec3656aaa21534a71cbbe0dd846c5b`
 
-# Using the following definition:
+# `@astrocache.cache()`
+
+## Definitions
 ```
 @astrocache.cache()
 def cached_func(x, **kwargs):
     print("EXECUTED")
     return one(x, 1)
-
 ```
 
-# Testing basic memoization
->>> cached_func(100)
+## Basic memoization
 EXECUTED
-{"a": 102}
+```
 >>> cached_func(100)
-{"a": 102}
+{"a": 102}```
+```
+>>> cached_func(100)
+{"a": 102}```
 
-# Change behavior of make_thing(100)
->>> cached_func(100)
+## Change behavior of `increment(100)`
 EXECUTED
-{"a": 102}
+```
 >>> cached_func(100)
-{"a": 102}
+{"a": 102}```
+```
+>>> cached_func(100)
+{"a": 102}```
 
-# Different args
+## Change args
+EXECUTED
+```
 >>> cached_func(999)
-EXECUTED
-{"a": 1001}
+{"a": 1001}```
+```
 >>> cached_func(999)
-{"a": 1001}
+{"a": 1001}```
 
-# Adding kwarg
->>> cached_func(999, foo=True)
+## Add kwarg
 EXECUTED
-{"a": 1001}
+```
 >>> cached_func(999, foo=True)
-{"a": 1001}
+{"a": 1001}```
+```
+>>> cached_func(999, foo=True)
+{"a": 1001}```
 
-# Using no_cache
+## Use no_cache
+EXECUTED
+```
 >>> cached_func(999, foo=True, no_cache=True)
+{"a": 1001}```
+
+## Are functions passed into cached function included in fingerprint?
 EXECUTED
-{"a": 1001}
+```
+>>> cached_func(100, func=increment)
+{"a": 102}```
+```
+>>> cached_func(100, func=increment)
+{"a": 102}```
 
-# Are functions passed into cached function included in fingerprint?
->>> cached_func(100, func=make_thing)
+Change behavior of increment()
+```
+def increment(x):
+    return x + 2
+```
 EXECUTED
-{"a": 102}
->>> cached_func(100, func=make_thing)
-{"a": 102}
+```
+>>> cached_func(100, func=increment)
+{"a": 102}```
 
-# Change behavior of make_thing()
->>> cached_func(100, func=make_thing)
-EXECUTED
-{"a": 102}
+## Make sure cache_id is deterministic across processes when args include functions
+```
+>>> _get_cache_id('increment', ['increment'], {'fn': 'increment'})
+5cae25d3b1e7beb9239e92f85cfa53cf```
 
-# Making sure cache_id is deterministic across processes when args include functions
-_get_cache_id(make_thing, [make_thing], dict(fn=make_thing))
-24fc188cd2c6ca5cf417ce102eddb8c4
+# Exceptions
 
-
-##############
-# Exceptions #
-##############
-
-# Using the following definition:
+## Definitions
 ```
 @astrocache.cache(root='/')
 def root_fn(a):
     return json.dumps(a)
-
 ```
 
-# Calling a cached function with root='/'
+## Calling a cached function with root='/'
+```
 >>> root_fn(1)
-ValueError: Unable to find source for function _json.encode_basestring_ascii
+ValueError: Unable to find source for function _json.encode_basestring_ascii```
 
-# Can args include lists?
->>> _get_cache_id('make_thing', [[1]], {})
-f320090f7e42ee5ab0de0c1b10b9e1ff
-
-# Can args include dicts?
->>> _get_cache_id('make_thing', [{1: 2}], {})
-8a3d8b0356e1550140a6b6d67e087600
-
-# Can args include sets?
->>> _get_cache_id('make_thing', [{1}], {})
-c4f95f3677455495b226e6705afedd6a
-
-# Can args include None?
->>> _get_cache_id('make_thing', [None], {})
-a7ae9dc1c122a61ac22e4abdadd83ad4
-
-# Using the following definition:
+## Can args include lists?
 ```
-class Foo:
+>>> _get_cache_id('increment', [[1]], {})
+2858e5cd05a2c2e1f7cba0fae210ba0e```
+
+## Can args include dicts?
+```
+>>> _get_cache_id('increment', [{1: 2}], {})
+181c89cd97e258c14c4c4d4dec6aae24```
+
+## Can args include sets?
+```
+>>> _get_cache_id('increment', [{1}], {})
+2bd7d467ef063b8d4912864c83881180```
+
+## Can args include None?
+```
+>>> _get_cache_id('increment', [None], {})
+76db4caa41a76e51a6cf0e81c147f315```
+
+## Definitions
+```
+class MyClass:
     def __init__(self, a): self.a = a
-    def __repr__(self): return f'Foo({self.a})'
-
+    def __hash__(self): return self.a
 ```
 
-# Can args include classes?
->>> _get_cache_id('make_thing', ['Foo'], {})
-ValueError: Unable to find source for function __main__.Foo
+## Can args include classes?
+```
+>>> _get_cache_id('increment', ['MyClass'], {})
+ValueError: Unable to find source for function __main__.MyClass```
 
-# Can args include instances of hashable user-defined classes?
->>> _get_cache_id('make_thing', [Foo(1)], {})
-2258ceae8daef9450aa2e4346001cc09
+## Can args include instances of user-defined classes?
+```
+>>> _get_cache_id('increment', ['<MyClass instance>'], {})
+0ab4a68bf6ac6d3cfe20e6d7308408a2```

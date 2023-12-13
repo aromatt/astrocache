@@ -1,0 +1,149 @@
+
+# Limitations
+
+Astrocache's AST-sensitivity covers most situations you might expect.
+
+However, functions referenced by your cached function are only considered part
+of its AST if one or more of these criteria are met:
+1. Cached function calls the referenced function
+2. Cached function contains the definition of the referenced function
+3. Cached function receives the referenced function as an argument
+
+By contrast, the following kinds of references (on their own) do _not_ result in
+the referenced function being considered part of your cached function's AST:
+* Assigning the function to a variable
+* Passing the function to a function call
+
+This test case documents the behavior in each of these scenarios.
+
+We track material changes to a function's AST via its fingerprint hash, which is
+part of its cache key.
+
+
+
+## Calling a function
+
+Here, `called_fn()` is invoked by `foo()`, so it meets criterion 1.
+
+
+```
+def called_fn(x):
+    return x + 1
+```
+```
+def foo():
+    called_fn()
+```
+Fingerprint for `foo()`: `7a7d78356d0a1984713973ba84d614c6`
+
+Change implementation of `called_fn()`
+
+```
+def called_fn(x):
+    return x + 2
+```
+Fingerprint for `foo()`: `fa4a73f1c976fccf7be0b12de0c4e3fd` (changed)
+
+
+## Defining a function
+
+Here, `defined_fn()` is defined within `foo()`, so it meets criterion 2.
+
+
+```
+def foo():
+    def defined_fn():
+        return x + 1
+```
+Fingerprint for `foo()`: `d022d2d236217777d2af9a79ec090e9a`
+
+Change implementation of `defined_fn()`
+
+```
+def foo():
+    def defined_fn():
+        return x + 2
+```
+Fingerprint for `foo()`: `fbbb715480e7ff9e808ff35af5a3b1d6` (changed)
+
+
+## Assigning a function to a variable
+
+Here, `assigned_fn()` is assigned to a variable within `foo()`, but none of the
+criteria are met.
+
+
+```
+def assigned_fn(x):
+    return x + 1
+```
+```
+def foo():
+    # Assign a function to a variable, but don't call it
+    fn = assigned_fn
+```
+Fingerprint for `foo()`: `9c9e43b454482908af31b33a89b78364`
+
+Change implementation of `assigned_fn()`
+
+```
+def assigned_fn():
+    return x + 2
+```
+Fingerprint for `foo()`: `9c9e43b454482908af31b33a89b78364` (unchanged)
+
+
+## Passing a function to a function call
+
+Here, `passed_fn()` is passed to another function by `foo()`, but none of the
+criteria are met.
+
+
+```
+def passed_fn(x):
+    return x + 1
+```
+```
+def foo():
+    # Pass a function as an argument, but don't call it
+    print(passed_fn)
+```
+Fingerprint for `foo()`: `eb669f6757bbfeba7dbeae2ad2979830`
+
+Change implementation of `passed_fn()`
+
+```
+def passed_fn():
+    return x + 2
+```
+Fingerprint for `foo()`: `eb669f6757bbfeba7dbeae2ad2979830` (unchanged)
+
+
+## Workaround (criterion 3)
+
+If you want to ensure a referenced function's implementation is included in your
+cached function's fingerprint, you can force criterion 3 by accepting it as a
+parameter, even if it isn't otherwise necessary.
+
+Then, when your cached function is invoked, the referenced function will be
+mixed into the cache key along with the other arguments.
+
+
+```
+def received_fn(x):
+    return x + 1
+```
+```
+def foo(fn=received_fn):
+    return True
+```
+Fingerprint for `foo()`: `0de9e84b1b762a204b3ce9bb0df64b3e`
+
+Change implementation of `received_fn()`
+
+```
+def received_fn():
+    return x + 2
+```
+Fingerprint for `foo()`: `0de9e84b1b762a204b3ce9bb0df64b3e` (unchanged)
+

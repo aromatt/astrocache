@@ -11,7 +11,7 @@ import astrocache
 # FUNCTIONS UNDER TEST #
 ########################
 
-
+# We will re-implement this function over the course of the test
 def foo(a):
     return a + 1
 

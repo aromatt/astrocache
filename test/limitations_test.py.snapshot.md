@@ -5,14 +5,14 @@ Astrocache's AST-sensitivity covers most situations you might expect.
 
 However, functions referenced by your cached function are only considered part
 of its AST if one or more of these criteria are met:
-1. Cached function calls the referenced function
-2. Cached function contains the definition of the referenced function
-3. Cached function receives the referenced function as an argument
+1. Cached function calls referenced function
+2. Cached function defines referenced function
+3. Cached function receives referenced function as a parameter
 
 By contrast, the following kinds of references (on their own) do _not_ result in
 the referenced function being considered part of your cached function's AST:
-* Assigning the function to a variable
-* Passing the function to a function call
+* Cached function assigns referenced function to a variable
+* Cached function passes referenced function as an argument
 
 This test case documents the behavior in each of these scenarios.
 
@@ -21,7 +21,7 @@ part of its cache key.
 
 
 
-## Calling a function
+## Calling a function (criterion 1)
 
 Here, `called_fn()` is invoked by `foo()`, so it meets criterion 1.
 
@@ -45,7 +45,7 @@ def called_fn(x):
 Fingerprint for `foo()`: `fa4a73f1c976fccf7be0b12de0c4e3fd` (changed)
 
 
-## Defining a function
+## Defining a function (criterion 2)
 
 Here, `defined_fn()` is defined within `foo()`, so it meets criterion 2.
 
@@ -121,9 +121,9 @@ Fingerprint for `foo()`: `eb669f6757bbfeba7dbeae2ad2979830` (unchanged)
 
 ## Workaround (criterion 3)
 
-If you want to ensure a referenced function's implementation is included in your
-cached function's fingerprint, you can force criterion 3 by accepting it as a
-parameter, even if it isn't otherwise necessary.
+If your use case doesn't meet either of the first two criteria, you can force
+criterion 3 by requiring the caller to pass it to your function as an argument,
+even if this isn't otherwise necessary.
 
 Then, when your cached function is invoked, the referenced function will be
 mixed into the cache key along with the other arguments.

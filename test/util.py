@@ -5,12 +5,22 @@ import astrocache
 
 
 # Markdown generation helpers
+
 def h1(msg): print(f"\n# {msg}")
 def h2(msg): print(f"\n## {msg}")
 def h3(msg): print(f"\n### {msg}")
-def code_block(code): print(f"```\n{code}```")
 def text_block(text): print(f"{text}\n")
 
+def code_block_start():
+    print("```python")
+
+def code_block_end():
+    print("```")
+
+def code_block(code):
+    code_block_start()
+    print(code)
+    code_block_end()
 
 def get_fn_name(fn):
     """Returns the name of `fn` as a deterministic string"""
@@ -50,12 +60,14 @@ def invoke(fn, *args, **kwargs):
     result"""
     name = get_fn_name(fn)
     param_str = get_param_str(args, kwargs)
-    command = f">>> {name}({param_str})"
+    code_block_start()
+    print(f">>> {name}({param_str})")
     try:
         result = fn(*args, **kwargs)
     except Exception as e:
         result = f"{type(e).__name__}: {e}"
-    code_block(f"{command}\n{result}")
+    print(result)
+    code_block_end()
 
 
 def func_fingerprint_hash(func, **kwargs):

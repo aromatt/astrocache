@@ -28,15 +28,16 @@ class Function(NamedTuple):
 
     @classmethod
     def from_func(cls, func: Callable):
-        if hasattr(builtins, func.__name__):
+        if inspect.isbuiltin(func):
             filename = '<builtin>'
             src = None
         else:
             try:
                 filename = Path(func.__code__.co_filename)
                 src = textwrap.dedent(inspect.getsource(func))
-            except:
-                raise ValueError(f"Unable to find source for function {func.__module__}.{func.__name__}")
+            except Exception as e:
+                raise ValueError(f"Unable to find source for function "
+                                 f"{func.__module__}.{func.__name__}: {e}")
         node = ast.parse(src, filename=filename) if src else None
         return cls(function=func,
                    name=func.__name__,
@@ -207,9 +208,9 @@ def cache(root: Optional[str] = None):
 
     Parameters:
     root (Optional[str]): The root directory for source code inspection. This
-                          limits the scope of function implementation inspection
-                          to the specified directory. Defaults to the directory
-                          containing the function's module.
+    limits the scope of function implementation inspection
+    to the specified directory. Defaults to the directory
+    containing the function's module.
 
     Returns:
     Callable: A wrapped function with caching applied.

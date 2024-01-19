@@ -66,9 +66,8 @@ def invoke(fn, *args, **kwargs):
         result = fn(*args, **kwargs)
     except Exception as e:
         result = f"{type(e).__name__}: {e}"
-        # print traceback
-        import traceback
-        traceback.print_exc()
+        #import traceback
+        #traceback.print_exc()
 
     print(result)
     code_block_end()

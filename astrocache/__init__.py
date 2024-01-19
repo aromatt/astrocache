@@ -10,6 +10,7 @@ import shutil
 import sys
 import tempfile
 import textwrap
+import types
 
 from contextlib import contextmanager
 from pathlib import Path
@@ -19,7 +20,7 @@ CACHE_DIR = os.environ.get('ASTROCACHE_DIR', Path(tempfile.gettempdir()) / 'astr
 REFRESH = os.environ.get('ASTROCACHE_REFRESH')
 
 
-class FunctionNotFoundError(Exception):
+class DereferenceError(Exception):
     pass
 
 
@@ -27,51 +28,86 @@ def _isbuiltin(func: Callable|str):
     if isinstance(func, str):
         return func in builtins.__dict__
     elif isinstance(func, Callable):
-        return func.__module__ == 'builtins'
+        return func.__module__ == 'builtins' or type(func) == types.BuiltinFunctionType
     else:
-        raise ValueError(f"Expected str or Callable, got {type(func)}")
+        return False
 
 
-def _func_from_name(name: str, context) -> Callable:
-    """Find function called `name` in `context`, and return it as a Callable or
-    raise an Exception.
+def _deref(name: str, context):
+    """Find object called `name` in `context` and return it or raise an
+    Exception.
     """
-    func = None
+    obj = None
     if _isbuiltin(name):
-        func = getattr(builtins, name)
+        obj = getattr(builtins, name)
     else:
-        found = None
         if isinstance(context, Callable):
             if context.__name__ == name:
                 # function is the context itself
-                found = context
+                obj = context
             else:
                 # function is in the context's scope
-                found = context.__globals__.get(name)
-        elif inspect.isclass(context) or isinstance(context, object):
-            found = getattr(context, name, None)
+                obj = inspect.unwrap(context).__globals__.get(name)
         elif inspect.ismodule(context):
-            found = context.__dict__.get(name)
-        if isinstance(found, Callable):
-            func = found
-    if func is None:
-        raise FunctionNotFoundError(f"Unable to find function '{name}' "
-                                    f"in the context of '{context}'")
-    return func
+            # e.g. json.dumps
+            obj = context.__dict__.get(name)
+        else:
+            # e.g. my_object.foo
+            obj = getattr(context, name, None)
+    if obj is None:
+        raise DereferenceError(f"Unable to find '{name}' in context '{context}'")
+    return obj
+
+# TODO make sure @property is handled correctly
+def _deref_attr(node: ast.Attribute, context):
+    # find node for attribute
+    attr_name = node.attr
+    parent_name = node.value.id
+    parent = None
+    # An attribute may appear as foo.bar or self.bar
+    if parent_name == 'self':
+        parent = context.__self__
+    else:
+        parent = context.__globals__.get(parent_name)
+    if parent is None:
+        # see if parent is a module
+        parent = sys.modules.get(parent_name)
+    if parent is None:
+        raise DereferenceError(f"Unable to find parent for '{node}'")
+    # TODO what about getattr(foo, 'bar')()?
+    return _deref(attr_name, parent)
+
+
+def _ensure_func(obj: Callable) -> Callable:
+    if not isinstance(obj, Callable):
+        raise DereferenceError(f"Expected Callable, got {type(obj)}")
+    return obj
 
 
 def _node_for_func(func: Callable):
     if _isbuiltin(func):
-        filename = '<builtin>'
-        src = None
+        return None
     else:
         try:
             filename = Path(func.__code__.co_filename)
             src = textwrap.dedent(inspect.getsource(func))
             return ast.parse(src, filename=filename) if src else None
         except Exception as e:
-            raise FunctionNotFoundError(
+            raise DereferenceError(
                 f"Unable to find source for function {func.__module__}.{func.__name__}: {e}")
+
+
+def _node_for_obj(obj: Callable):
+    try:
+        filename = Path(obj.__code__.co_filename)
+        src = textwrap.dedent(inspect.getsource(obj))
+        return ast.parse(src, filename=filename) if src else None
+    except Exception as e:
+        raise DereferenceError(f"Unable to find source for {obj}: {e}")
+
+
+def _has_code(obj):
+    return hasattr(obj, '__code__')
 
 
 def _iter_func_nodes(node: ast.AST, context: Callable):
@@ -83,30 +119,21 @@ def _iter_func_nodes(node: ast.AST, context: Callable):
 
     context: this tracks the scope in which to look up functions by name
     """
-    #print(f"iter_func_nodes node type {type(node)}, context {type(context)}")
-    if node is None:
-        return
 
     # If node is a function definition, then yield it and update the context for
     # child nodes
     if type(node) == ast.FunctionDef:
         yield node
-        context = _func_from_name(node.name, context)
+        context = _ensure_func(_deref(node.name, context))
 
-    # We need to do this for attribute lookups that are not method calls
     elif type(node) == ast.Attribute:
-        raise NotImplementedError("Attribute lookups are not yet supported")
-        #if type(node.value) == ast.Name:
-        #    parent_name = node.value.id
-        #    func_name = node.attr
-        #    if parent_name == 'self':
-        #        parent = context.__self__
-        #    else:
-        #        parent = context.__globals__.get(parent_name)
-        #    if parent:
-        #        context = parent
+        attr = _deref_attr(node, context)
+        if _has_code(attr):
+            attr_node = _node_for_obj(attr)
+            yield from _iter_func_nodes(attr_node, attr)
 
     # If node is a function call, find the function's definition
+    # TODO may be able to remove this
     elif type(node) == ast.Call:
         # Normal function call
         if type(node.func) == ast.Name:
@@ -115,10 +142,11 @@ def _iter_func_nodes(node: ast.AST, context: Callable):
             pass
         # Method or module.function call
         elif type(node.func) == ast.Attribute:
-            method_name = node.func.attr
+            # TODO I think I can replace this with _deref_attr or remove it completely
+            attr_name = node.func.attr
             parent_name = node.func.value.id
             parent = None
-            # A method call may appear as self.bar() or foo.bar()
+            # An attribute may appear as foo.bar or self.bar
             if parent_name == 'self':
                 parent = context.__self__
             else:
@@ -126,30 +154,26 @@ def _iter_func_nodes(node: ast.AST, context: Callable):
             if parent is None:
                 # see if parent is a module
                 parent = sys.modules.get(parent_name)
+            if parent is None:
+                raise DereferenceError(f"Unable to find parent for '{node}'")
             # TODO what about getattr(foo, 'bar')()?
-            method = _func_from_name(method_name, parent)
-            if method_node := _node_for_func(method):
-                yield from _iter_func_nodes(method_node, method)
+            attr = _deref(attr_name, parent)
+            if method_node := _node_for_func(attr):
+                yield from _iter_func_nodes(method_node, attr)
             #yield from _iter_func_nodes(method_node, context)
 
     # A function name may appear as an ast.Name for function calls, argument
     # defaults, and expressions. In all cases, we need to dereference to find
     # the function definition.
     elif type(node) == ast.Name:
-        func = None
-        try:
-            func = _func_from_name(node.id, context)
-        except FunctionNotFoundError:
-            # This name is not a function
-            pass
-            # TODO it would be good to be a little more strict about this. Sometimes
-            # we really expect a function to be found, and sometimes we don't.
-        if func:
-            if _isbuiltin(func):
-                yield node
-            else:
-                named_func_node = _node_for_func(func)
-                yield from _iter_func_nodes(named_func_node, context)
+        # Don't need to dereference e.g. `foo` in `foo = 1`
+        if not isinstance(node.ctx, ast.Store):
+            obj = _deref(node.id, context)
+            if isinstance(obj, Callable):
+                if _isbuiltin(obj):
+                    yield node
+                else:
+                    yield from _iter_func_nodes(_node_for_func(obj), context)
 
     # Recursively gather function definitions from child nodes
     for child_node in ast.iter_child_nodes(node):

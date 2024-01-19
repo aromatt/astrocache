@@ -118,7 +118,7 @@ def foo():
     print(passed_fn)
 
 ```
-Fingerprint for `foo()`: `eb669f6757bbfeba7dbeae2ad2979830`
+Fingerprint for `foo()`: `bb2fd6700a7cc4ae81ad7dafe6ac7283`
 
 Change implementation of `passed_fn()`
 
@@ -127,7 +127,7 @@ def passed_fn():
     return x + 2
 
 ```
-Fingerprint for `foo()`: `eb669f6757bbfeba7dbeae2ad2979830` (unchanged)
+Fingerprint for `foo()`: `bb2fd6700a7cc4ae81ad7dafe6ac7283` (unchanged)
 
 
 ## Workaround (criterion 3)

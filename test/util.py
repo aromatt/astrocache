@@ -66,12 +66,16 @@ def invoke(fn, *args, **kwargs):
         result = fn(*args, **kwargs)
     except Exception as e:
         result = f"{type(e).__name__}: {e}"
+        # print traceback
+        import traceback
+        traceback.print_exc()
+
     print(result)
     code_block_end()
 
 
 def func_fingerprint_hash(func, **kwargs):
-    return astrocache._make_hash(astrocache._func_fingerprint(func, **kwargs))
+    return astrocache._make_hash(astrocache._ast_fingerprint(func, **kwargs))
 
 
 def print_fingerprint(func):

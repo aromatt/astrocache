@@ -33,6 +33,19 @@ def _isbuiltin(func: Callable|str):
         return False
 
 
+def _is_nested_def(name: str, func: Callable):
+    return any(isinstance(c, types.CodeType) and c.co_name == name
+               for c in func.__code__.co_consts)
+
+# When foo is defined inside bar, we are unable to obtain a reference to foo
+# which we need in order to dereference things from inside foo. There may be
+# a way to do this, but as of now we can't do it. Instead, we raise this
+# exception so that the calling code can work around it.
+class NestedDefError(Exception):
+    def __init__(self, name: str, func: Callable):
+        super().__init__(f"Unable to dereference '{name}' defined in "
+                         f"{func.__name__} because it is a nested function definition")
+
 def _deref(name: str, context):
     """Find object called `name` in `context` and return it or raise an
     Exception.
@@ -43,17 +56,25 @@ def _deref(name: str, context):
     else:
         if isinstance(context, Callable):
             if context.__name__ == name:
-                # function is the context itself
+                # the context itself is what we were looking for
                 obj = context
+            elif name in inspect.signature(context).parameters:
+                # We can assume a function is is referencing one of its
+                # parameters. Since these are determined at runtime, we aren't
+                # concerned with them during AST inspection, but note that args
+                # and kwargs are still included in cache keys.
+                return None
             else:
-                # function is in the context's scope
-                obj = inspect.unwrap(context).__globals__.get(name)
+                if _is_nested_def(name, context):
+                    raise NestedDefError(name, context)
+                else:
+                    obj = inspect.unwrap(context).__globals__.get(name)
         elif inspect.ismodule(context):
             # e.g. json.dumps
             obj = context.__dict__.get(name)
         else:
             # e.g. my_object.foo
-            obj = getattr(context, name, None)
+            obj = inspect.getattr_static(context, name, None)
     if obj is None:
         raise DereferenceError(f"Unable to find '{name}' in context '{context}'")
     return obj
@@ -110,21 +131,26 @@ def _has_code(obj):
     return hasattr(obj, '__code__')
 
 
-def _iter_func_nodes(node: ast.AST, context: Callable):
+def _iter_func_nodes(node: ast.AST, context):
     """Visits all nodes in the provided AST, and yields all child nodes
     that are function definitions. This includes dereferencing functions
-    from calls and expressions; their definitions are looked up in a __globals__
-    dict, because they're not included in the AST of `node`. provided AST and
-    need to be looked up.
+    from calls and expressions; their definitions are looked up by name
+    because they're not included in the AST of `node`.
 
-    context: this tracks the scope in which to look up functions by name
+    context: this is the scope in which to look up functions by name
     """
 
     # If node is a function definition, then yield it and update the context for
     # child nodes
     if type(node) == ast.FunctionDef:
         yield node
-        context = _ensure_func(_deref(node.name, context))
+        try:
+            context = _ensure_func(_deref(node.name, context))
+        except NestedDefError:
+            # Allow context to remain unchanged as recurse into the nested def.
+            # For example, if foo() is defined inside bar(), then the context
+            # will continue to be bar() as we inspect foo().
+            pass
 
     elif type(node) == ast.Attribute:
         attr = _deref_attr(node, context)
@@ -167,7 +193,7 @@ def _iter_func_nodes(node: ast.AST, context: Callable):
     # the function definition.
     elif type(node) == ast.Name:
         # Don't need to dereference e.g. `foo` in `foo = 1`
-        if not isinstance(node.ctx, ast.Store):
+        if not (isinstance(node.ctx, ast.Store) or node.id == 'self'):
             obj = _deref(node.id, context)
             if isinstance(obj, Callable):
                 if _isbuiltin(obj):

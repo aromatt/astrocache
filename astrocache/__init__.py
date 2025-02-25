@@ -2,7 +2,6 @@ import ast
 import builtins
 import functools
 import hashlib
-import importlib
 import inspect
 import os
 import pickle
@@ -14,7 +13,7 @@ import types
 
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, NamedTuple, Optional, Set
+from typing import Callable, Set, Any
 
 CACHE_DIR = os.environ.get('ASTROCACHE_DIR', Path(tempfile.gettempdir()) / 'astrocache')
 REFRESH = os.environ.get('ASTROCACHE_REFRESH')
@@ -37,6 +36,7 @@ def _is_nested_def(name: str, func: Callable):
     return any(isinstance(c, types.CodeType) and c.co_name == name
                for c in func.__code__.co_consts)
 
+
 # When foo is defined inside bar, we are unable to obtain a reference to foo
 # which we need in order to dereference things from inside foo. There may be
 # a way to do this, but as of now we can't do it. Instead, we raise this
@@ -45,6 +45,7 @@ class NestedDefError(Exception):
     def __init__(self, name: str, func: Callable):
         super().__init__(f"Unable to dereference '{name}' defined in "
                          f"{func.__name__} because it is a nested function definition")
+
 
 def _deref(name: str, context):
     """Find object called `name` in `context` and return it or raise an
